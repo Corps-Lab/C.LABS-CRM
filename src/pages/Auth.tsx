@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import logoImage from "@/assets/logo.png";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { AgencySwitcher } from "@/components/agency/AgencySwitcher";
+import { AgencyLogo } from "@/components/branding/AgencyLogo";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -76,7 +76,11 @@ export default function Auth() {
       <Card className="w-full max-w-md border border-primary/30 bg-black/40 backdrop-blur-xl shadow-xl shadow-primary/20">
         <CardHeader className="text-center space-y-3 pb-3">
           <div className="flex justify-center">
-            <img src={logoImage} alt="C.LABS" className="w-20 h-20 object-contain" />
+            <AgencyLogo
+              className="justify-center"
+              iconClassName={currentAgency.id === "corps" ? "h-20 w-20 rounded-[28px]" : "h-20 w-20"}
+              wordmarkClassName="text-left"
+            />
           </div>
           <CardTitle className="text-2xl text-white">Acesso seguro</CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
@@ -84,7 +88,9 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="space-y-4">
+        <CardContent
+          className={currentAgency.id === "corps" ? "space-y-4 rounded-2xl border border-primary/20 bg-[linear-gradient(180deg,rgba(255,138,29,0.08),rgba(0,0,0,0))] p-6" : "space-y-4"}
+        >
           <AgencySwitcher />
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

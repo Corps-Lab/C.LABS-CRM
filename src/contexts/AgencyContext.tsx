@@ -53,14 +53,14 @@ const agencies: AgencyConfig[] = [
   {
     id: "corps",
     name: "Agência Corps",
-    description: "Acesso isolado da Agência Corps com paleta azul e dados separados",
+    description: "Acesso isolado da Agência Corps com paleta laranja e dados separados",
     mode: "isolated",
     theme: {
-      primary: "199 92% 60%",
-      accent: "199 92% 60%",
-      chartStart: "199 92% 60%",
-      chartEnd: "199 90% 52%",
-      glow: "199 92% 60% / 0.25",
+      primary: "27 100% 55%",
+      accent: "27 100% 55%",
+      chartStart: "27 100% 58%",
+      chartEnd: "18 100% 50%",
+      glow: "27 100% 55% / 0.30",
     },
   },
 ];

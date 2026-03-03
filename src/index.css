@@ -107,17 +107,17 @@ html {
   }
 
   :root[data-agency="corps"] {
-    --primary: 199 92% 60%;
-    --accent: 199 92% 60%;
-    --sidebar-primary: 199 92% 60%;
-    --chart-primary: 199 92% 60%;
-    --chart-gradient-start: 199 92% 60%;
-    --chart-gradient-end: 199 90% 52%;
-    --glow-primary: 199 92% 60% / 0.25;
-    --auth-glow-1: rgba(56, 189, 248, 0.18);
-    --auth-glow-2: rgba(14, 165, 233, 0.25);
-    --auth-bg-1: #020915;
-    --auth-bg-2: #0b1622;
+    --primary: 27 100% 55%;
+    --accent: 27 100% 55%;
+    --sidebar-primary: 27 100% 55%;
+    --chart-primary: 27 100% 55%;
+    --chart-gradient-start: 27 100% 58%;
+    --chart-gradient-end: 18 100% 50%;
+    --glow-primary: 27 100% 55% / 0.3;
+    --auth-glow-1: rgba(255, 138, 29, 0.22);
+    --auth-glow-2: rgba(255, 106, 0, 0.3);
+    --auth-bg-1: #110703;
+    --auth-bg-2: #1c0c04;
   }
 }
 

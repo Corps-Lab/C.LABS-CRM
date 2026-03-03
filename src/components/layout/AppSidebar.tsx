@@ -20,9 +20,9 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-import logoImage from "@/assets/logo.png";
 import { useAgency } from "@/contexts/AgencyContext";
 import { Badge } from "../ui/badge";
+import { AgencyLogo } from "../branding/AgencyLogo";
 
 interface NavItem {
   title: string;
@@ -77,11 +77,18 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
     >
       {/* Logo */}
       <div className="flex items-center gap-3 p-4 border-b border-sidebar-border">
-        <img src={logoImage} alt="C.LABS" className="w-10 h-10 object-contain" />
+        <AgencyLogo
+          showWordmark={false}
+          iconClassName={cn("h-10 w-10", currentAgency.id === "corps" && "rounded-xl")}
+        />
         {!collapsed && (
           <div className="flex flex-col">
-            <span className="font-bold text-foreground">C.LABS</span>
-            <span className="text-sm text-primary">CRM</span>
+            <span className="font-bold text-foreground">
+              {currentAgency.id === "corps" ? "CORPS" : "C.LABS"}
+            </span>
+            <span className="text-sm text-primary">
+              {currentAgency.id === "corps" ? "AGENCY CRM" : "CRM"}
+            </span>
             <Badge variant="outline" className="mt-1 w-fit">
               {currentAgency.name} {isIsolated ? "· isolado" : ""}
             </Badge>
