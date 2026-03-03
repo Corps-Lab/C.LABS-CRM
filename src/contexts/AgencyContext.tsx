@@ -25,6 +25,17 @@ interface AgencyContextType {
   isIsolated: boolean;
 }
 
+const LEGACY_AGENCY_ALIASES: Record<string, string> = {
+  sky: "corps",
+};
+
+const LEGACY_STORAGE_MIGRATIONS = [
+  ["crm_sky_users", "crm_corps_users"],
+  ["crm_sky_session", "crm_corps_session"],
+  ["crm_sky_clients", "crm_corps_clients"],
+  ["crm_sky_demands", "crm_corps_demands"],
+] as const;
+
 const agencies: AgencyConfig[] = [
   {
     id: "clabs",
@@ -40,9 +51,9 @@ const agencies: AgencyConfig[] = [
     },
   },
   {
-    id: "sky",
-    name: "Agência Céu",
-    description: "Acesso isolado com paleta azul céu e dados zerados",
+    id: "corps",
+    name: "Agência Corps",
+    description: "Acesso isolado da Agência Corps com paleta azul e dados separados",
     mode: "isolated",
     theme: {
       primary: "199 92% 60%",
@@ -58,6 +69,26 @@ const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
 
 const STORAGE_KEY = "crm_current_agency";
 
+function normalizeAgencyId(id: string | null | undefined) {
+  if (!id) return null;
+  return LEGACY_AGENCY_ALIASES[id] || id;
+}
+
+function migrateLegacyAgencyStorage() {
+  for (const [oldKey, newKey] of LEGACY_STORAGE_MIGRATIONS) {
+    const legacyValue = localStorage.getItem(oldKey);
+    const nextValue = localStorage.getItem(newKey);
+    if (legacyValue && !nextValue) {
+      localStorage.setItem(newKey, legacyValue);
+    }
+  }
+
+  const storedAgency = localStorage.getItem(STORAGE_KEY);
+  if (storedAgency === "sky") {
+    localStorage.setItem(STORAGE_KEY, "corps");
+  }
+}
+
 function applyTheme(config: AgencyConfig) {
   const root = document.documentElement;
   root.dataset.agency = config.id;
@@ -71,10 +102,11 @@ function applyTheme(config: AgencyConfig) {
 
 export function AgencyProvider({ children }: { children: ReactNode }) {
   const [currentId, setCurrentId] = useState<string>(() => {
+    migrateLegacyAgencyStorage();
     const params = new URLSearchParams(window.location.search);
-    const paramAgency = params.get("agency");
+    const paramAgency = normalizeAgencyId(params.get("agency"));
     if (paramAgency && agencies.some((a) => a.id === paramAgency)) return paramAgency;
-    const stored = localStorage.getItem(STORAGE_KEY);
+    const stored = normalizeAgencyId(localStorage.getItem(STORAGE_KEY));
     return stored && agencies.some((a) => a.id === stored) ? stored : agencies[0].id;
   });
 

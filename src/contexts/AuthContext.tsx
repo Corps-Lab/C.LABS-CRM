@@ -69,6 +69,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const localUsersKey = useMemo(() => `crm_${currentAgency.id}_users`, [currentAgency.id]);
   const localSessionKey = useMemo(() => `crm_${currentAgency.id}_session`, [currentAgency.id]);
 
+  const migrateLegacyCorpsIdentity = () => {
+    if (currentAgency.id !== "corps") return;
+
+    try {
+      const rawUsers = localStorage.getItem(localUsersKey);
+      if (rawUsers) {
+        const parsedUsers = JSON.parse(rawUsers) as LocalUserRecord[];
+        const migratedUsers = parsedUsers.map((userRecord) => ({
+          ...userRecord,
+          email:
+            userRecord.email === "ceo@sky.ag"
+              ? "ceo@corps.ag"
+              : userRecord.email.replace(/@sky\.ag$/i, "@corps.ag"),
+        }));
+        localStorage.setItem(localUsersKey, JSON.stringify(migratedUsers));
+      }
+
+      const rawSession = localStorage.getItem(localSessionKey);
+      if (rawSession) {
+        const parsedSession = JSON.parse(rawSession) as LocalSessionRecord;
+        const migratedSession = {
+          ...parsedSession,
+          email:
+            parsedSession.email === "ceo@sky.ag"
+              ? "ceo@corps.ag"
+              : parsedSession.email.replace(/@sky\.ag$/i, "@corps.ag"),
+        };
+        localStorage.setItem(localSessionKey, JSON.stringify(migratedSession));
+      }
+    } catch {
+      /* ignore migration failure */
+    }
+  };
+
   const loadLocalUsers = (): LocalUserRecord[] => {
     try {
       const raw = localStorage.getItem(localUsersKey);
@@ -113,6 +147,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isIsolated) {
+      migrateLegacyCorpsIdentity();
       ensureDefaultCeo();
       const stored = loadLocalSession();
       if (stored) {

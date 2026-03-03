@@ -106,7 +106,7 @@ html {
     --sidebar-ring: 72 90% 53%;
   }
 
-  :root[data-agency="sky"] {
+  :root[data-agency="corps"] {
     --primary: 199 92% 60%;
     --accent: 199 92% 60%;
     --sidebar-primary: 199 92% 60%;

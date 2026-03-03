@@ -24,7 +24,7 @@ export default function Auth() {
   const { signIn, signUp, user } = useAuth();
   const { currentAgency, isIsolated } = useAgency();
   const navigate = useNavigate();
-  const emailPlaceholder = currentAgency.id === "clabs" ? "squad@clabs.ag" : "ceo@agenciaceu.ag";
+  const emailPlaceholder = currentAgency.id === "clabs" ? "squad@clabs.ag" : "ceo@agenciacorps.ag";
 
   // If already logged in, redirect
   if (user) {
@@ -80,7 +80,7 @@ export default function Auth() {
           </div>
           <CardTitle className="text-2xl text-white">Acesso seguro</CardTitle>
           <CardDescription className="text-sm text-muted-foreground">
-            Selecione a agência para entrar. O ambiente “Agência Céu” é isolado e começa zerado.
+            Selecione a agência para entrar. O ambiente “Agência Corps” é isolado e começa zerado.
           </CardDescription>
         </CardHeader>
 
