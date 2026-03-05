@@ -4,11 +4,17 @@ import { MetricCard } from "@/components/dashboard/MetricCard";
 import { TopClientsChart } from "@/components/dashboard/TopClientsChart";
 import { RevenueGoalCard } from "@/components/dashboard/RevenueGoalCard";
 import { useClients } from "@/contexts/ClientContext";
-import { DollarSign, CreditCard, TrendingUp, Clock } from "lucide-react";
+import { useDemands } from "@/contexts/DemandContext";
+import { useContracts } from "@/contexts/ContractContext";
+import { useTransactions } from "@/contexts/TransactionContext";
+import { DollarSign, CreditCard, TrendingUp, Clock, Users, KanbanSquare, FileText, Wallet } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
   const { clients, totalFaturamento } = useClients();
+  const { demands } = useDemands();
+  const { contracts } = useContracts();
+  const { totalEntradas, totalDespesas } = useTransactions();
   const { user } = useAuth();
   const storageKey = useMemo(() => `crm_revenue_goal_${user?.id ?? "anon"}`, [user?.id]);
   const [goal, setGoal] = useState(15000);
@@ -36,9 +42,13 @@ const Index = () => {
   // Calculate metrics from clients data
   const metricsData = {
     faturamento: totalFaturamento,
-    despesas: 0,
-    receitaAnual: 0,
-    pendentes: 0,
+    despesas: totalDespesas,
+    receitaAnual: totalFaturamento * 12,
+    pendentes: demands.filter((d) => d.status === "pendente" || d.status === "atrasada").length,
+    clientesAtivos: clients.length,
+    demandasEmAndamento: demands.filter((d) => d.status === "em_andamento").length,
+    contratosAtivos: contracts.length,
+    saldoFinanceiro: totalEntradas - totalDespesas,
   };
 
   // Get top clients sorted by value
@@ -82,8 +92,34 @@ const Index = () => {
           />
           <MetricCard
             title="Pendentes"
-            value={formatCurrency(metricsData.pendentes)}
+            value={metricsData.pendentes.toString()}
             icon={<Clock className="w-6 h-6" />}
+          />
+        </div>
+
+        {/* Extra Panels */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+          <MetricCard
+            title="Clientes Ativos"
+            value={metricsData.clientesAtivos.toString()}
+            icon={<Users className="w-6 h-6" />}
+            variant="primary"
+          />
+          <MetricCard
+            title="Demandas em Andamento"
+            value={metricsData.demandasEmAndamento.toString()}
+            icon={<KanbanSquare className="w-6 h-6" />}
+          />
+          <MetricCard
+            title="Contratos Cadastrados"
+            value={metricsData.contratosAtivos.toString()}
+            icon={<FileText className="w-6 h-6" />}
+          />
+          <MetricCard
+            title="Saldo Financeiro"
+            value={formatCurrency(metricsData.saldoFinanceiro)}
+            icon={<Wallet className="w-6 h-6" />}
+            variant="primary"
           />
         </div>
 
