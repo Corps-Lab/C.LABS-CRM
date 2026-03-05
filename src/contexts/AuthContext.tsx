@@ -58,6 +58,20 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // mesmo que as variáveis não estejam presentes em tempo de build (há fallback hardcoded no client).
 const isMockAuthEnabled = () => import.meta.env.VITE_USE_MOCK_AUTH === "true";
 
+const normalizeEmail = (value: string) => value.trim().toLowerCase();
+
+const normalizeAgencyEmail = (value: string, agencyId: string) => {
+  const email = normalizeEmail(value);
+  if (agencyId !== "corps") return email;
+
+  if (email === "ceo@sky.ag" || email === "ceo@agenciaceu.ag") return "ceo@corps.ag";
+
+  return email
+    .replace(/@sky\.ag$/i, "@corps.ag")
+    .replace(/@agenciaceu\.ag$/i, "@corps.ag")
+    .replace(/@agenciacorps\.ag$/i, "@corps.ag");
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { currentAgency, isIsolated } = useAgency();
   const [user, setUser] = useState<User | null>(null);
@@ -78,10 +92,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsedUsers = JSON.parse(rawUsers) as LocalUserRecord[];
         const migratedUsers = parsedUsers.map((userRecord) => ({
           ...userRecord,
-          email:
-            userRecord.email === "ceo@sky.ag"
-              ? "ceo@corps.ag"
-              : userRecord.email.replace(/@sky\.ag$/i, "@corps.ag"),
+          email: normalizeAgencyEmail(userRecord.email, "corps"),
         }));
         localStorage.setItem(localUsersKey, JSON.stringify(migratedUsers));
       }
@@ -91,10 +102,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const parsedSession = JSON.parse(rawSession) as LocalSessionRecord;
         const migratedSession = {
           ...parsedSession,
-          email:
-            parsedSession.email === "ceo@sky.ag"
-              ? "ceo@corps.ag"
-              : parsedSession.email.replace(/@sky\.ag$/i, "@corps.ag"),
+          email: normalizeAgencyEmail(parsedSession.email, "corps"),
         };
         localStorage.setItem(localSessionKey, JSON.stringify(migratedSession));
       }
@@ -241,8 +249,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     try {
       if (isIsolated) {
+        const normalizedInputEmail = normalizeAgencyEmail(email, currentAgency.id);
         const users = loadLocalUsers();
-        const found = users.find((u) => u.email === email && u.password === password);
+        const found = users.find(
+          (u) => normalizeAgencyEmail(u.email, currentAgency.id) === normalizedInputEmail && u.password === password
+        );
         if (!found) throw new Error("Credenciais inválidas para esta agência");
         const localUser = { id: found.id || safeId("user"), email: found.email, user_metadata: { name: found.nome } } as unknown as User;
         setUser(localUser);
@@ -284,8 +295,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return { error: null };
       }
 
+      const normalizedEmail = normalizeEmail(email);
+      if (
+        currentAgency.id !== "corps" &&
+        /@(corps\.ag|agenciacorps\.ag|sky\.ag|agenciaceu\.ag)$/i.test(normalizedEmail)
+      ) {
+        throw new Error("Selecione a agência 'Agência Corps' para usar este acesso.");
+      }
+
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: normalizedEmail,
         password,
       });
       if (error) throw error;
@@ -298,11 +317,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signUp = async (email: string, password: string, nome: string, telefone: string, role: AppRole, cpf?: string, cargo?: string) => {
     try {
       if (isIsolated) {
+        const normalizedInputEmail = normalizeAgencyEmail(email, currentAgency.id);
         const users = loadLocalUsers();
-        if (users.some((u) => u.email === email)) throw new Error("E-mail já cadastrado para esta agência");
+        if (users.some((u) => normalizeAgencyEmail(u.email, currentAgency.id) === normalizedInputEmail)) {
+          throw new Error("E-mail já cadastrado para esta agência");
+        }
         const localUser = {
           id: safeId("user"),
-          email,
+          email: normalizedInputEmail,
           password,
           nome,
           telefone: telefone || null,

@@ -24,7 +24,7 @@ export default function Auth() {
   const { signIn, signUp, user } = useAuth();
   const { currentAgency, isIsolated } = useAgency();
   const navigate = useNavigate();
-  const emailPlaceholder = currentAgency.id === "clabs" ? "squad@clabs.ag" : "ceo@agenciacorps.ag";
+  const emailPlaceholder = currentAgency.id === "clabs" ? "squad@clabs.ag" : "ceo@corps.ag";
 
   // If already logged in, redirect
   if (user) {
@@ -154,7 +154,7 @@ export default function Auth() {
 
           {isIsolated && (
             <div className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary">
-              Ambiente isolado: acesso inicial CEO {`ceo@${currentAgency.id}.ag`} / azul123. Você pode criar novos acessos em “Acessos”.
+              Ambiente isolado: acesso inicial CEO ceo@corps.ag / azul123. Tambem aceitamos ceo@agenciacorps.ag.
             </div>
           )}
 
