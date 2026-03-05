@@ -94,11 +94,12 @@ export default function Clientes() {
 
   return (
     <MainLayout totalCaixa={totalFaturamento}>
-      <div className="space-y-6 animate-fade-in">
+      <div className="animate-fade-in">
+        <div className="space-y-5 rounded-2xl border border-border/80 bg-card/35 p-4 sm:p-5">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-primary/30 bg-primary/10 shadow-[0_0_22px_hsl(var(--primary)/0.25)]">
               <Users className="w-6 h-6 text-primary" />
             </div>
             <div>
@@ -109,7 +110,10 @@ export default function Clientes() {
             </div>
           </div>
 
-          <Button onClick={() => setIsFormOpen(true)} className="gap-2 self-start sm:self-auto">
+          <Button
+            onClick={() => setIsFormOpen(true)}
+            className="gap-2 self-start sm:self-auto shadow-[0_0_18px_hsl(var(--primary)/0.30)]"
+          >
             <Plus className="w-4 h-4" />
             Adicionar Cliente
           </Button>
@@ -117,38 +121,56 @@ export default function Clientes() {
 
         {/* Summary Cards */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <div className="rounded-xl border border-border bg-card p-4 card-glow-hover">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Total de Clientes</span>
-              <Users className="h-4 w-4 text-primary" />
+          <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+                <Users className="h-4 w-4 text-primary" />
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Total</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{loading ? "--" : totalClients}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Total de clientes</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4 card-glow-hover">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Clientes Ativos</span>
-              <UserCheck2 className="h-4 w-4 text-primary" />
+          <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+                <UserCheck2 className="h-4 w-4 text-primary" />
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Ativos</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{loading ? "--" : activeClients}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Clientes ativos</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4 card-glow-hover">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Clientes Inativos</span>
-              <UserX2 className="h-4 w-4 text-primary" />
+          <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+                <UserX2 className="h-4 w-4 text-primary" />
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Inativos</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{loading ? "--" : inactiveClients}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Clientes inativos</p>
           </div>
-          <div className="rounded-xl border border-border bg-card p-4 card-glow-hover">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs uppercase tracking-wide text-muted-foreground">Prospectos</span>
-              <UserPlus2 className="h-4 w-4 text-primary" />
+          <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
+                <UserPlus2 className="h-4 w-4 text-primary" />
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Pipeline</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{loading ? "--" : prospectClients}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Prospectos</p>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="rounded-xl border border-border bg-card p-4 card-glow">
+        <div className="rounded-xl border border-border bg-card/70 p-4 card-glow">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <p className="text-xs uppercase tracking-wider text-muted-foreground">Buscar Cliente</p>
+              <p className="text-[11px] text-muted-foreground">Filtre por nome, documento, responsavel ou status</p>
+            </div>
+          </div>
           <div className="grid gap-3 md:grid-cols-12">
             <div className="relative md:col-span-6">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -203,13 +225,14 @@ export default function Clientes() {
         </div>
 
         {/* Table */}
-        <div className="rounded-xl border border-border bg-card p-4 card-glow">
+        <div className="rounded-xl border border-border bg-card/70 p-4 card-glow">
           <ClientTable
             clients={filteredClients}
             onEdit={handleEdit}
             onDelete={removeClient}
             onView={setViewingClient}
           />
+        </div>
         </div>
 
         {/* Form Modal */}

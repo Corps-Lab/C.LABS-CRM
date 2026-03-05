@@ -85,16 +85,16 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
     <>
       <div className="rounded-xl border border-border overflow-hidden">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[980px]">
           <TableHeader>
             <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-              <TableHead className="w-[72px] text-muted-foreground font-semibold">ID</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">Empresa</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">CNPJ / Responsável</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">Contato</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">Status</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">Criado em</TableHead>
-              <TableHead className="text-muted-foreground font-semibold text-right">Ações</TableHead>
+              <TableHead className="w-[72px] text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">ID</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Empresa</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">CNPJ / Responsável</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Contato</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Status</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Criado em</TableHead>
+              <TableHead className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -145,7 +145,7 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
                       variant="ghost"
                       size="icon"
                       onClick={() => onView(client)}
-                      className="h-8 w-8 rounded-md border border-border hover:text-primary"
+                      className="h-8 w-8 rounded-md border border-primary/30 bg-primary/10 text-primary hover:bg-primary/20"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -153,7 +153,7 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
                       variant="ghost"
                       size="icon"
                       onClick={() => onEdit(client)}
-                      className="h-8 w-8 rounded-md border border-border hover:text-primary"
+                      className="h-8 w-8 rounded-md border border-amber-500/40 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -161,7 +161,7 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteId(client.id)}
-                      className="h-8 w-8 rounded-md border border-border hover:text-destructive"
+                      className="h-8 w-8 rounded-md border border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
