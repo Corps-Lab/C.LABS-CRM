@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Client } from "@/types/client";
+import { Client, clientStatusOptions, normalizeClientStatus } from "@/types/client";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -46,17 +46,15 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
     anual: "Anual",
   };
 
-  const getStatus = (client: Client) => {
-    if (!client.cnpj || client.cnpj.trim().length < 5) return "prospecto";
-    if (client.valorPago <= 0) return "inativo";
-    return "ativo";
-  };
-
   const statusClassName: Record<string, string> = {
     ativo: "bg-primary/15 text-primary border-primary/30",
     inativo: "bg-destructive/10 text-destructive border-destructive/30",
-    prospecto: "bg-muted text-muted-foreground border-border",
+    prospect: "bg-muted text-muted-foreground border-border",
+    inadimplente: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   };
+  const statusLabel: Record<string, string> = Object.fromEntries(
+    clientStatusOptions.map((status) => [status.value, status.label])
+  );
 
   const formatDate = (value: Date) => {
     const date = value instanceof Date ? value : new Date(value);
@@ -130,10 +128,10 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
                   <span
                     className={cn(
                       "inline-flex rounded-full border px-2 py-1 text-xs font-medium uppercase tracking-wide",
-                      statusClassName[getStatus(client)]
+                      statusClassName[normalizeClientStatus(client.status, client.cnpj, client.valorPago)]
                     )}
                   >
-                    {getStatus(client)}
+                    {statusLabel[normalizeClientStatus(client.status, client.cnpj, client.valorPago)]}
                   </span>
                 </TableCell>
                 <TableCell className="text-muted-foreground text-sm">

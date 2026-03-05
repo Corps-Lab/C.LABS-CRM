@@ -27,7 +27,7 @@ export type DemandFormData = Omit<Demand, "id" | "createdAt" | "clientName">;
 export const statusOptions = [
   { value: "pendente", label: "Pendente", color: "bg-yellow-500/20 text-yellow-400" },
   { value: "em_andamento", label: "Em Andamento", color: "bg-blue-500/20 text-blue-400" },
-  { value: "concluida", label: "Concluída", color: "bg-green-500/20 text-green-400" },
+  { value: "concluida", label: "Concluída", color: "bg-primary/15 text-primary" },
   { value: "atrasada", label: "Atrasada", color: "bg-red-500/20 text-red-400" },
 ] as const;
 

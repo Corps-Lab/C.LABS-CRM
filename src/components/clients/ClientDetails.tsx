@@ -1,4 +1,4 @@
-import { Client } from "@/types/client";
+import { Client, clientStatusOptions, normalizeClientStatus } from "@/types/client";
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,14 @@ export function ClientDetails({ client, open, onClose }: ClientDetailsProps) {
 
   const details = [
     { icon: Building2, label: "CNPJ", value: client.cnpj },
+    {
+      icon: User,
+      label: "Status",
+      value:
+        clientStatusOptions.find(
+          (option) => option.value === normalizeClientStatus(client.status, client.cnpj, client.valorPago)
+        )?.label || "Ativo",
+    },
     { icon: MapPin, label: "Endereço", value: client.endereco },
     { icon: DollarSign, label: "Valor Pago", value: formatCurrency(client.valorPago) },
     { icon: Calendar, label: "Recorrência", value: recorrenciaLabel[client.recorrencia] },

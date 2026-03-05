@@ -7,6 +7,7 @@ import { useClients } from "@/contexts/ClientContext";
 import { useDemands } from "@/contexts/DemandContext";
 import { useContracts } from "@/contexts/ContractContext";
 import { useTransactions } from "@/contexts/TransactionContext";
+import { normalizeClientStatus } from "@/types/client";
 import { DollarSign, CreditCard, TrendingUp, Clock, Users, KanbanSquare, FileText, Wallet } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -120,7 +121,7 @@ const Index = () => {
     despesas: yearlyTotals.despesas,
     receitaAnual: monthlyRecurringRevenue * 12,
     pendentes: demands.filter((d) => d.status === "pendente" || d.status === "atrasada").length,
-    clientesAtivos: clients.filter((c) => Number(c.valorPago || 0) > 0).length,
+    clientesAtivos: clients.filter((c) => normalizeClientStatus(c.status, c.cnpj, c.valorPago) === "ativo").length,
     demandasEmAndamento: demands.filter((d) => d.status === "em_andamento").length,
     contratosAtivos: contracts.length,
     saldoFinanceiro: yearlyTotals.entradas - yearlyTotals.despesas,
@@ -335,7 +336,7 @@ const Index = () => {
                 </div>
               </div>
               <div className="space-y-1.5 text-xs">
-                <p className="text-emerald-400">Faturamento: {formatCurrency(currentMonthFinance.entradas)}</p>
+                <p className="text-primary">Faturamento: {formatCurrency(currentMonthFinance.entradas)}</p>
                 <p className="text-red-400">Despesas: {formatCurrency(currentMonthFinance.despesas)}</p>
                 <p className={isPositiveProfit ? "text-primary" : "text-red-400"}>
                   Lucro: {formatCurrency(currentMonthFinance.lucro)}

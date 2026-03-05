@@ -141,7 +141,7 @@ export default function Financeiro() {
             <div className="flex justify-end">
               <Button
                 type="button"
-                className="gap-2 bg-green-600 hover:bg-green-500 text-white"
+                className="gap-2"
                 onClick={() => handleAddTransaction(undefined, "entrada")}
               >
                 <ArrowDownCircle className="w-4 h-4" />
@@ -174,7 +174,7 @@ export default function Financeiro() {
             <div className="flex gap-2 justify-end">
               <Button
                 type="button"
-                className="gap-2 bg-green-600 hover:bg-green-500 text-white"
+                className="gap-2"
                 onClick={() => handleAddTransaction(undefined, "entrada")}
               >
                 <ArrowDownCircle className="w-4 h-4" />
@@ -220,12 +220,12 @@ export default function Financeiro() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="p-5 rounded-xl bg-card border border-border">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-lg bg-green-500/10">
-              <TrendingUp className="w-5 h-5 text-green-400" />
+            <div className="p-3 rounded-lg bg-primary/10">
+              <TrendingUp className="w-5 h-5 text-primary" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Total Entradas</p>
-              <p className="text-2xl font-bold text-green-400">{formatCurrency(totalEntradasView)}</p>
+              <p className="text-2xl font-bold text-primary">{formatCurrency(totalEntradasView)}</p>
             </div>
           </div>
         </div>
@@ -268,8 +268,8 @@ export default function Financeiro() {
             <AreaChart data={chartData}>
               <defs>
                 <linearGradient id="colorEntradas" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#22c55e" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="colorDespesas" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#ef4444" stopOpacity={0.3} />
@@ -284,7 +284,7 @@ export default function Financeiro() {
                 formatter={(value: number) => formatCurrency(value)}
               />
               <Legend />
-              <Area type="monotone" dataKey="entradas" name="Entradas" stroke="#22c55e" fill="url(#colorEntradas)" strokeWidth={2} />
+              <Area type="monotone" dataKey="entradas" name="Entradas" stroke="hsl(var(--primary))" fill="url(#colorEntradas)" strokeWidth={2} />
               <Area type="monotone" dataKey="despesas" name="Despesas" stroke="#ef4444" fill="url(#colorDespesas)" strokeWidth={2} />
             </AreaChart>
           </ResponsiveContainer>

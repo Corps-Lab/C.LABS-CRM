@@ -32,10 +32,13 @@ export const clientSchema = z.object({
     .max(300, "Endereço deve ter no máximo 300 caracteres"),
   valorPago: z
     .number({ invalid_type_error: "Valor deve ser um número" })
-    .positive("Valor deve ser maior que zero")
+    .min(0, "Valor não pode ser negativo")
     .max(10000000, "Valor muito alto"),
   recorrencia: z.enum(["mensal", "trimestral", "semestral", "anual"], {
     errorMap: () => ({ message: "Selecione uma recorrência válida" }),
+  }),
+  status: z.enum(["ativo", "prospect", "inativo", "inadimplente"], {
+    errorMap: () => ({ message: "Selecione um status válido" }),
   }),
   responsavel: z
     .string()

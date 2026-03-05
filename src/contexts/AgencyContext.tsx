@@ -43,11 +43,11 @@ const agencies: AgencyConfig[] = [
     mode: "shared",
     description: "Acesso padrão do CRM C.LABS",
     theme: {
-      primary: "72 90% 53%",
-      accent: "72 90% 53%",
-      chartStart: "72 90% 53%",
-      chartEnd: "72 90% 45%",
-      glow: "72 90% 53% / 0.20",
+      primary: "27 100% 55%",
+      accent: "27 100% 55%",
+      chartStart: "27 100% 58%",
+      chartEnd: "18 100% 50%",
+      glow: "27 100% 55% / 0.20",
     },
   },
   {

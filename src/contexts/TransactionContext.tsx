@@ -4,6 +4,7 @@ import { useClients } from "./ClientContext";
 import { safeId } from "@/lib/safeId";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
+import { useAgency } from "./AgencyContext";
 
 interface TransactionContextType {
   transactions: Transaction[];
@@ -24,6 +25,8 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const { clients } = useClients();
   const { user } = useAuth();
+  const { isIsolated, currentAgency } = useAgency();
+  const storageKey = useMemo(() => `crm_${currentAgency.id}_transactions`, [currentAgency.id]);
 
   const mapRow = (row: Record<string, unknown>): Transaction => {
     const clientId = typeof row.client_id === "string" ? row.client_id : undefined;
@@ -47,11 +50,47 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  const mapLocal = (row: Record<string, unknown>): Transaction => {
+    const clientId = typeof row.clientId === "string" ? row.clientId : undefined;
+    const valor = typeof row.valor === "number" ? row.valor : Number(row.valor ?? 0);
+    const mes = typeof row.mes === "number" ? row.mes : Number(row.mes ?? 0);
+    const ano = typeof row.ano === "number" ? row.ano : Number(row.ano ?? 0);
+    const vencimento = typeof row.vencimento === "number" ? row.vencimento : undefined;
+    const clientName =
+      clients.find((c) => c.id === clientId)?.razaoSocial ||
+      (typeof row.clientName === "string" ? row.clientName : undefined);
+    return {
+      id: String(row.id || safeId("txn")),
+      tipo: row.tipo === "despesa" ? "despesa" : "entrada",
+      descricao: (row.descricao as string) || "",
+      valor,
+      categoria: (row.categoria as string) || "",
+      mes,
+      ano,
+      vencimento,
+      payerType:
+        row.payerType === "cliente" || row.payerType === "colaborador" || row.payerType === "outro"
+          ? row.payerType
+          : undefined,
+      referenciaNome: typeof row.referenciaNome === "string" ? row.referenciaNome : undefined,
+      clientId,
+      clientName,
+      createdAt: row.createdAt ? new Date(row.createdAt as string) : new Date(),
+    };
+  };
+
   const refresh = async () => {
     setLoading(true);
-    if (!user) {
-      setTransactions([]);
-      setLoading(false);
+    if (!user || isIsolated) {
+      try {
+        const raw = localStorage.getItem(storageKey);
+        const parsed = raw ? (JSON.parse(raw) as Record<string, unknown>[]) : [];
+        setTransactions(parsed.map(mapLocal));
+      } catch {
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -73,7 +112,7 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [clients.length, user]);
+  }, [clients.length, user, isIsolated, storageKey]);
 
   const addTransaction = async (data: TransactionFormData) => {
     const client = data.clientId ? clients.find((c) => c.id === data.clientId) : null;
@@ -93,7 +132,14 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
       createdAt: new Date(),
     };
 
-    if (!user) throw new Error("Usuário não autenticado");
+    if (!user || isIsolated) {
+      setTransactions((prev) => {
+        const next = [base, ...prev];
+        localStorage.setItem(storageKey, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
 
     const payload = {
       tipo: base.tipo,
@@ -118,7 +164,14 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   };
 
   const removeTransaction = async (id: string) => {
-    if (!user) throw new Error("Usuário não autenticado");
+    if (!user || isIsolated) {
+      setTransactions((prev) => {
+        const next = prev.filter((t) => t.id !== id);
+        localStorage.setItem(storageKey, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
     try {
       const { error } = await supabase.from("transactions").delete().eq("id", id);
       if (error) throw error;
@@ -131,7 +184,22 @@ export function TransactionProvider({ children }: { children: ReactNode }) {
   };
 
   const updateTransaction = async (id: string, data: Partial<TransactionFormData>) => {
-    if (!user) throw new Error("Usuário não autenticado");
+    if (!user || isIsolated) {
+      setTransactions((prev) => {
+        const next = prev.map((t) =>
+          t.id === id
+            ? {
+                ...t,
+                ...data,
+                clientName: data.clientId ? clients.find((c) => c.id === data.clientId)?.razaoSocial : t.clientName,
+              }
+            : t
+        );
+        localStorage.setItem(storageKey, JSON.stringify(next));
+        return next;
+      });
+      return;
+    }
 
     const payload: Record<string, unknown> = {};
     if (data.tipo !== undefined) payload.tipo = data.tipo;

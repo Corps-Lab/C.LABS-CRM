@@ -1,7 +1,7 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { clientSchema, ClientSchemaType } from "@/lib/validations";
-import { recorrenciaOptions } from "@/types/client";
+import { clientStatusOptions, recorrenciaOptions } from "@/types/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -53,6 +53,7 @@ export function ClientForm({
       endereco: "",
       valorPago: 0,
       recorrencia: "mensal",
+      status: "ativo",
       responsavel: "",
       contatoInterno: "",
     },
@@ -173,6 +174,31 @@ export function ClientForm({
               </Select>
               {errors.recorrencia && (
                 <p className="text-sm text-destructive">{errors.recorrencia.message}</p>
+              )}
+            </div>
+
+            {/* Status */}
+            <div className="space-y-2">
+              <Label>Status *</Label>
+              <Select
+                value={watch("status")}
+                onValueChange={(value) =>
+                  setValue("status", value as ClientSchemaType["status"])
+                }
+              >
+                <SelectTrigger className="bg-secondary border-border">
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clientStatusOptions.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.status && (
+                <p className="text-sm text-destructive">{errors.status.message}</p>
               )}
             </div>
 

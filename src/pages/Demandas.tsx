@@ -131,7 +131,7 @@ export default function Demandas() {
           </div>
           <div className="p-4 rounded-xl bg-card border border-border">
             <p className="text-sm text-muted-foreground">Concluídas</p>
-            <p className="text-2xl font-bold text-green-400">{stats.concluidas}</p>
+            <p className="text-2xl font-bold text-primary">{stats.concluidas}</p>
           </div>
         </div>
 

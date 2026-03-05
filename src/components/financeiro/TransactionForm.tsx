@@ -185,8 +185,8 @@ export function TransactionForm({
                   className={cn(
                     "flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-all",
                     tipo === "entrada"
-                      ? "border-green-500 bg-green-500/15 text-green-100"
-                      : "border-border bg-secondary text-muted-foreground hover:border-green-500/50"
+                      ? "border-primary bg-primary/15 text-primary"
+                      : "border-border bg-secondary text-muted-foreground hover:border-primary/50"
                   )}
                 >
                   <ArrowDownCircle className="w-5 h-5" />

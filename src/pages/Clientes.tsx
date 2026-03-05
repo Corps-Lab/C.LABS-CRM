@@ -4,7 +4,7 @@ import { ClientForm } from "@/components/clients/ClientForm";
 import { ClientTable } from "@/components/clients/ClientTable";
 import { ClientDetails } from "@/components/clients/ClientDetails";
 import { useClients } from "@/contexts/ClientContext";
-import { Client, ClientFormData } from "@/types/client";
+import { Client, ClientFormData, ClientStatus, normalizeClientStatus } from "@/types/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -17,13 +17,11 @@ import {
 import { Plus, Search, Users, UserCheck2, UserX2, UserPlus2, Filter, Eraser } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type ClientStatusFilter = "todos" | "ativos" | "inativos" | "prospectos";
+type ClientStatusFilter = "todos" | ClientStatus;
 type ClientRecorrenciaFilter = "todas" | "mensal" | "trimestral" | "semestral" | "anual";
 
 function getClientStatus(client: Client): Exclude<ClientStatusFilter, "todos"> {
-  if (!client.cnpj || client.cnpj.trim().length < 5) return "prospectos";
-  if (client.valorPago <= 0) return "inativos";
-  return "ativos";
+  return normalizeClientStatus(client.status, client.cnpj, client.valorPago);
 }
 
 export default function Clientes() {
@@ -37,9 +35,10 @@ export default function Clientes() {
   const { toast } = useToast();
 
   const totalClients = clients.length;
-  const activeClients = clients.filter((client) => getClientStatus(client) === "ativos").length;
-  const inactiveClients = clients.filter((client) => getClientStatus(client) === "inativos").length;
-  const prospectClients = clients.filter((client) => getClientStatus(client) === "prospectos").length;
+  const activeClients = clients.filter((client) => getClientStatus(client) === "ativo").length;
+  const inactiveClients = clients.filter((client) => getClientStatus(client) === "inativo").length;
+  const prospectClients = clients.filter((client) => getClientStatus(client) === "prospect").length;
+  const defaultingClients = clients.filter((client) => getClientStatus(client) === "inadimplente").length;
 
   const filteredClients = clients.filter(
     (client) => {
@@ -47,7 +46,8 @@ export default function Clientes() {
         client.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.cnpj.includes(searchTerm) ||
         client.responsavel.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        client.contatoInterno.toLowerCase().includes(searchTerm.toLowerCase());
+        client.contatoInterno.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        getClientStatus(client).includes(searchTerm.toLowerCase());
 
       const statusMatch = statusFilter === "todos" || getClientStatus(client) === statusFilter;
       const recorrenciaMatch = recorrenciaFilter === "todas" || client.recorrencia === recorrenciaFilter;
@@ -120,7 +120,7 @@ export default function Clientes() {
         </div>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
           <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
             <div className="mb-3 flex items-center justify-between">
               <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
@@ -159,7 +159,17 @@ export default function Clientes() {
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Pipeline</span>
             </div>
             <p className="text-2xl font-bold text-foreground">{loading ? "--" : prospectClients}</p>
-            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Prospectos</p>
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Prospects</p>
+          </div>
+          <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-amber-500/30 bg-amber-500/10">
+                <UserX2 className="h-4 w-4 text-amber-400" />
+              </span>
+              <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Financeiro</span>
+            </div>
+            <p className="text-2xl font-bold text-foreground">{loading ? "--" : defaultingClients}</p>
+            <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Inadimplentes</p>
           </div>
         </div>
 
@@ -188,9 +198,10 @@ export default function Clientes() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos status</SelectItem>
-                  <SelectItem value="ativos">Ativos</SelectItem>
-                  <SelectItem value="inativos">Inativos</SelectItem>
-                  <SelectItem value="prospectos">Prospectos</SelectItem>
+                  <SelectItem value="ativo">Ativo</SelectItem>
+                  <SelectItem value="prospect">Prospect</SelectItem>
+                  <SelectItem value="inativo">Inativo</SelectItem>
+                  <SelectItem value="inadimplente">Inadimplente</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -248,6 +259,7 @@ export default function Clientes() {
                   endereco: editingClient.endereco,
                   valorPago: editingClient.valorPago,
                   recorrencia: editingClient.recorrencia,
+                  status: getClientStatus(editingClient),
                   responsavel: editingClient.responsavel,
                   contatoInterno: editingClient.contatoInterno,
                 }

@@ -37,8 +37,8 @@ export function TopClientsChart({ data }: TopClientsChartProps) {
           <AreaChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="hsl(72 90% 53%)" stopOpacity={0.4} />
-                <stop offset="95%" stopColor="hsl(72 90% 53%)" stopOpacity={0.05} />
+                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4} />
+                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0.05} />
               </linearGradient>
             </defs>
             <CartesianGrid 
@@ -76,11 +76,11 @@ export function TopClientsChart({ data }: TopClientsChartProps) {
             <Area
               type="monotone"
               dataKey="value"
-              stroke="hsl(72 90% 53%)"
+              stroke="hsl(var(--primary))"
               strokeWidth={2}
               fill="url(#colorValue)"
-              dot={{ fill: "hsl(72 90% 53%)", strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, fill: "hsl(72 90% 53%)" }}
+              dot={{ fill: "hsl(var(--primary))", strokeWidth: 2, r: 4 }}
+              activeDot={{ r: 6, fill: "hsl(var(--primary))" }}
             />
           </AreaChart>
         </ResponsiveContainer>

@@ -15,7 +15,7 @@ export interface Contract {
 export type ContractFormData = Omit<Contract, "id" | "createdAt" | "clientName">;
 
 export const contractStatusOptions = [
-  { value: "ativo", label: "Ativo", color: "bg-green-500/20 text-green-400" },
+  { value: "ativo", label: "Ativo", color: "bg-primary/15 text-primary" },
   { value: "pendente", label: "Pendente", color: "bg-yellow-500/20 text-yellow-400" },
   { value: "encerrado", label: "Encerrado", color: "bg-muted text-muted-foreground" },
   { value: "cancelado", label: "Cancelado", color: "bg-destructive/20 text-destructive" },

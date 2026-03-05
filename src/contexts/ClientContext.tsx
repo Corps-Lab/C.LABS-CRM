@@ -1,5 +1,11 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
-import { Client, ClientFormData } from "@/types/client";
+import {
+  Client,
+  ClientFormData,
+  ClientStatus,
+  isClientStatus,
+  normalizeClientStatus,
+} from "@/types/client";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "./AuthContext";
 import { useAgency } from "./AgencyContext";
@@ -15,12 +21,74 @@ interface ClientContextType {
 
 const ClientContext = createContext<ClientContextType | undefined>(undefined);
 
+function mapClientRow(row: any, statusOverride?: ClientStatus): Client {
+  const valorPago = Number(row.valor_pago || 0);
+  const statusFromRow = isClientStatus(row.status) ? row.status : undefined;
+  return {
+    id: row.id,
+    razaoSocial: row.razao_social,
+    cnpj: row.cnpj,
+    endereco: row.endereco || "",
+    valorPago,
+    recorrencia: row.recorrencia,
+    status: normalizeClientStatus(statusFromRow || statusOverride, row.cnpj, valorPago),
+    responsavel: row.responsavel || "",
+    contatoInterno: row.contato_interno || "",
+    createdAt: new Date(row.created_at),
+  };
+}
+
+function hasMissingStatusColumn(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const message = "message" in err ? String(err.message || "") : "";
+  return message.toLowerCase().includes("status") && message.toLowerCase().includes("column");
+}
+
 export function ClientProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { isIsolated, currentAgency } = useAgency();
   const storageKey = useMemo(() => `crm_${currentAgency.id}_clients`, [currentAgency.id]);
+  const statusOverridesKey = useMemo(
+    () => `crm_${currentAgency.id}_client_status_overrides_${user?.id ?? "anon"}`,
+    [currentAgency.id, user?.id]
+  );
+
+  const readStatusOverrides = (): Record<string, ClientStatus> => {
+    try {
+      const raw = localStorage.getItem(statusOverridesKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (!parsed || typeof parsed !== "object") return {};
+      return Object.fromEntries(
+        Object.entries(parsed).filter(
+          (entry): entry is [string, ClientStatus] => isClientStatus(entry[1] as string)
+        )
+      );
+    } catch {
+      return {};
+    }
+  };
+
+  const writeStatusOverride = (id: string, status: ClientStatus) => {
+    try {
+      const prev = readStatusOverrides();
+      localStorage.setItem(statusOverridesKey, JSON.stringify({ ...prev, [id]: status }));
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  const removeStatusOverride = (id: string) => {
+    try {
+      const prev = readStatusOverrides();
+      if (!(id in prev)) return;
+      delete prev[id];
+      localStorage.setItem(statusOverridesKey, JSON.stringify(prev));
+    } catch {
+      // ignore storage errors
+    }
+  };
 
   // Carrega clientes do Supabase
   useEffect(() => {
@@ -31,7 +99,12 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         try {
           const raw = localStorage.getItem(storageKey);
           const parsed: Client[] = raw ? JSON.parse(raw) : [];
-          setClients(parsed);
+          setClients(
+            parsed.map((client) => ({
+              ...client,
+              status: normalizeClientStatus(client.status, client.cnpj, client.valorPago),
+            }))
+          );
         } catch {
           setClients([]);
         } finally {
@@ -46,18 +119,8 @@ export function ClientProvider({ children }: { children: ReactNode }) {
           .select("*")
           .order("created_at", { ascending: false });
         if (error) throw error;
-        const mapped =
-          data?.map((c) => ({
-            id: c.id,
-            razaoSocial: c.razao_social,
-            cnpj: c.cnpj,
-            endereco: c.endereco || "",
-            valorPago: Number(c.valor_pago || 0),
-            recorrencia: c.recorrencia,
-            responsavel: c.responsavel || "",
-            contatoInterno: c.contato_interno || "",
-            createdAt: new Date(c.created_at),
-          })) || [];
+        const overrides = readStatusOverrides();
+        const mapped = data?.map((c) => mapClientRow(c, overrides[c.id])) || [];
         setClients(mapped);
       } catch (err) {
         console.error("Erro ao carregar clientes", err);
@@ -67,7 +130,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       }
     };
     load();
-  }, [user, isIsolated, storageKey]);
+  }, [user, isIsolated, storageKey, statusOverridesKey]);
 
   const addClient = async (data: ClientFormData) => {
     // Modo mock: apenas grava localmente
@@ -79,6 +142,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         endereco: data.endereco,
         valorPago: data.valorPago,
         recorrencia: data.recorrencia,
+        status: data.status,
         responsavel: data.responsavel,
         contatoInterno: data.contatoInterno,
         createdAt: new Date(),
@@ -91,31 +155,38 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { data: inserted, error } = await supabase
-      .from("clients")
-      .insert({
-        razao_social: data.razaoSocial,
-        cnpj: data.cnpj,
-        endereco: data.endereco,
-        valor_pago: data.valorPago,
-        recorrencia: data.recorrencia,
-        responsavel: data.responsavel,
-        contato_interno: data.contatoInterno,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    const mapped: Client = {
-      id: inserted.id,
-      razaoSocial: inserted.razao_social,
-      cnpj: inserted.cnpj,
-      endereco: inserted.endereco || "",
-      valorPago: Number(inserted.valor_pago || 0),
-      recorrencia: inserted.recorrencia,
-      responsavel: inserted.responsavel || "",
-      contatoInterno: inserted.contato_interno || "",
-      createdAt: new Date(inserted.created_at),
+    const payload = {
+      razao_social: data.razaoSocial,
+      cnpj: data.cnpj,
+      endereco: data.endereco,
+      valor_pago: data.valorPago,
+      recorrencia: data.recorrencia,
+      status: data.status,
+      responsavel: data.responsavel,
+      contato_interno: data.contatoInterno,
     };
+    let inserted: any = null;
+    let error: any = null;
+    ({ data: inserted, error } = await supabase.from("clients").insert(payload).select().single());
+    if (error && hasMissingStatusColumn(error)) {
+      ({ data: inserted, error } = await supabase
+        .from("clients")
+        .insert({
+          razao_social: data.razaoSocial,
+          cnpj: data.cnpj,
+          endereco: data.endereco,
+          valor_pago: data.valorPago,
+          recorrencia: data.recorrencia,
+          responsavel: data.responsavel,
+          contato_interno: data.contatoInterno,
+        })
+        .select()
+        .single());
+      if (inserted) inserted.status = data.status;
+    }
+    if (error) throw error;
+    const mapped: Client = mapClientRow(inserted);
+    writeStatusOverride(mapped.id, mapped.status);
     setClients((prev) => [mapped, ...prev]);
   };
 
@@ -126,11 +197,13 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         localStorage.setItem(storageKey, JSON.stringify(next));
         return next;
       });
+      removeStatusOverride(id);
       return;
     }
     const { error } = await supabase.from("clients").delete().eq("id", id);
     if (error) throw error;
     setClients((prev) => prev.filter((client) => client.id !== id));
+    removeStatusOverride(id);
   };
 
   const updateClient = async (id: string, data: ClientFormData) => {
@@ -145,6 +218,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
                 endereco: data.endereco,
                 valorPago: data.valorPago,
                 recorrencia: data.recorrencia,
+                status: data.status,
                 responsavel: data.responsavel,
                 contatoInterno: data.contatoInterno,
               }
@@ -156,7 +230,9 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    const { data: updated, error } = await supabase
+    let updated: any = null;
+    let error: any = null;
+    ({ data: updated, error } = await supabase
       .from("clients")
       .update({
         razao_social: data.razaoSocial,
@@ -164,28 +240,35 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         endereco: data.endereco,
         valor_pago: data.valorPago,
         recorrencia: data.recorrencia,
+        status: data.status,
         responsavel: data.responsavel,
         contato_interno: data.contatoInterno,
       })
       .eq("id", id)
       .select()
-      .single();
+      .single());
+    if (error && hasMissingStatusColumn(error)) {
+      ({ data: updated, error } = await supabase
+        .from("clients")
+        .update({
+          razao_social: data.razaoSocial,
+          cnpj: data.cnpj,
+          endereco: data.endereco,
+          valor_pago: data.valorPago,
+          recorrencia: data.recorrencia,
+          responsavel: data.responsavel,
+          contato_interno: data.contatoInterno,
+        })
+        .eq("id", id)
+        .select()
+        .single());
+      if (updated) updated.status = data.status;
+    }
     if (error) throw error;
+    writeStatusOverride(updated.id, normalizeClientStatus(updated.status || data.status, updated.cnpj, Number(updated.valor_pago || 0)));
     setClients((prev) =>
       prev.map((client) =>
-        client.id === id
-          ? {
-              id: updated.id,
-              razaoSocial: updated.razao_social,
-              cnpj: updated.cnpj,
-              endereco: updated.endereco || "",
-              valorPago: Number(updated.valor_pago || 0),
-              recorrencia: updated.recorrencia,
-              responsavel: updated.responsavel || "",
-              contatoInterno: updated.contato_interno || "",
-              createdAt: new Date(updated.created_at),
-            }
-          : client
+        client.id === id ? mapClientRow(updated) : client
       )
     );
   };

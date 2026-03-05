@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Design System: Dark theme with Lime (#C7F31D) accent for CRM/Business Management */
+/* Design System: Dark theme with orange accent for CRM/Business Management */
 
 /* Base font scaling: fluid 12px (mobile) to 16px (desktop) */
 html {
@@ -20,7 +20,7 @@ html {
     --popover: 0 0% 7%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 72 90% 53%;
+    --primary: 27 100% 55%;
     --primary-foreground: 0 0% 2%;
 
     --secondary: 0 0% 12%;
@@ -29,7 +29,7 @@ html {
     --muted: 0 0% 18%;
     --muted-foreground: 0 0% 70%;
 
-    --accent: 72 90% 53%;
+    --accent: 27 100% 55%;
     --accent-foreground: 0 0% 2%;
 
     --destructive: 0 84% 60%;
@@ -37,28 +37,28 @@ html {
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 72 90% 53%;
+    --ring: 27 100% 55%;
 
     --radius: 0.75rem;
 
     --sidebar-background: 0 0% 6%;
     --sidebar-foreground: 0 0% 75%;
-    --sidebar-primary: 72 90% 53%;
+    --sidebar-primary: 27 100% 55%;
     --sidebar-primary-foreground: 0 0% 2%;
     --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 72 90% 53%;
+    --sidebar-ring: 27 100% 55%;
 
     /* Custom tokens */
-    --success: 142 76% 36%;
+    --success: 27 100% 55%;
     --success-foreground: 0 0% 98%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 2%;
-    --chart-primary: 72 90% 53%;
-    --chart-gradient-start: 72 90% 53%;
-    --chart-gradient-end: 72 90% 45%;
-    --glow-primary: 72 90% 53% / 0.2;
+    --chart-primary: 27 100% 55%;
+    --chart-gradient-start: 27 100% 58%;
+    --chart-gradient-end: 18 100% 50%;
+    --glow-primary: 27 100% 55% / 0.2;
 
     /* Auth/backdrop glows */
     --auth-glow-1: rgba(124, 58, 237, 0.18);
@@ -77,7 +77,7 @@ html {
     --popover: 0 0% 7%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 72 90% 53%;
+    --primary: 27 100% 55%;
     --primary-foreground: 0 0% 2%;
 
     --secondary: 0 0% 12%;
@@ -86,7 +86,7 @@ html {
     --muted: 0 0% 18%;
     --muted-foreground: 0 0% 70%;
 
-    --accent: 72 90% 53%;
+    --accent: 27 100% 55%;
     --accent-foreground: 0 0% 2%;
 
     --destructive: 0 62% 30%;
@@ -94,16 +94,16 @@ html {
 
     --border: 0 0% 18%;
     --input: 0 0% 18%;
-    --ring: 72 90% 53%;
+    --ring: 27 100% 55%;
 
     --sidebar-background: 0 0% 6%;
     --sidebar-foreground: 0 0% 75%;
-    --sidebar-primary: 72 90% 53%;
+    --sidebar-primary: 27 100% 55%;
     --sidebar-primary-foreground: 0 0% 2%;
     --sidebar-accent: 0 0% 12%;
     --sidebar-accent-foreground: 0 0% 98%;
     --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 72 90% 53%;
+    --sidebar-ring: 27 100% 55%;
   }
 
   :root[data-agency="corps"] {
@@ -142,7 +142,7 @@ html {
   }
 
   .text-gradient {
-    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(72 90% 60%) 100%);
+    background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(18 100% 50%) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
