@@ -1,5 +1,5 @@
 import logoImage from "@/assets/logo.png";
-import corpsLogo from "@/assets/corps-logo.svg";
+import corpsLogo from "@/assets/corps-logo.png";
 import { useAgency } from "@/contexts/AgencyContext";
 import { cn } from "@/lib/utils";
 
