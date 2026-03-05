@@ -46,6 +46,23 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
     anual: "Anual",
   };
 
+  const getStatus = (client: Client) => {
+    if (!client.cnpj || client.cnpj.trim().length < 5) return "prospecto";
+    if (client.valorPago <= 0) return "inativo";
+    return "ativo";
+  };
+
+  const statusClassName: Record<string, string> = {
+    ativo: "bg-primary/15 text-primary border-primary/30",
+    inativo: "bg-destructive/10 text-destructive border-destructive/30",
+    prospecto: "bg-muted text-muted-foreground border-border",
+  };
+
+  const formatDate = (value: Date) => {
+    const date = value instanceof Date ? value : new Date(value);
+    return new Intl.DateTimeFormat("pt-BR").format(date);
+  };
+
   const handleConfirmDelete = () => {
     if (deleteId) {
       onDelete(deleteId);
@@ -67,14 +84,16 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
   return (
     <>
       <div className="rounded-xl border border-border overflow-hidden">
-        <Table>
+        <div className="overflow-x-auto">
+          <Table>
           <TableHeader>
             <TableRow className="bg-secondary/50 hover:bg-secondary/50">
-              <TableHead className="text-muted-foreground font-semibold">Razão Social</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">CNPJ</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">Responsável</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">Valor</TableHead>
-              <TableHead className="text-muted-foreground font-semibold">Recorrência</TableHead>
+              <TableHead className="w-[72px] text-muted-foreground font-semibold">ID</TableHead>
+              <TableHead className="text-muted-foreground font-semibold">Empresa</TableHead>
+              <TableHead className="text-muted-foreground font-semibold">CNPJ / Responsável</TableHead>
+              <TableHead className="text-muted-foreground font-semibold">Contato</TableHead>
+              <TableHead className="text-muted-foreground font-semibold">Status</TableHead>
+              <TableHead className="text-muted-foreground font-semibold">Criado em</TableHead>
               <TableHead className="text-muted-foreground font-semibold text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -87,26 +106,46 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
                   index % 2 === 0 ? "bg-card" : "bg-card/50"
                 )}
               >
-                <TableCell className="font-medium text-foreground">
-                  {client.razaoSocial}
+                <TableCell className="font-mono text-xs text-muted-foreground">
+                  #{client.id.slice(0, 4)}
                 </TableCell>
-                <TableCell className="text-muted-foreground">{client.cnpj}</TableCell>
-                <TableCell className="text-muted-foreground">{client.responsavel}</TableCell>
-                <TableCell className="text-primary font-semibold">
-                  {formatCurrency(client.valorPago)}
+                <TableCell className="font-medium text-foreground">
+                  <div className="space-y-0.5">
+                    <p>{client.razaoSocial}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(client.valorPago)} • {recorrenciaLabel[client.recorrencia]}
+                    </p>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  <div className="space-y-0.5">
+                    <p>{client.cnpj || "—"}</p>
+                    <p className="text-xs">{client.responsavel || "Sem responsável"}</p>
+                  </div>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {client.contatoInterno || "Sem contato interno"}
                 </TableCell>
                 <TableCell>
-                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                    {recorrenciaLabel[client.recorrencia]}
+                  <span
+                    className={cn(
+                      "inline-flex rounded-full border px-2 py-1 text-xs font-medium uppercase tracking-wide",
+                      statusClassName[getStatus(client)]
+                    )}
+                  >
+                    {getStatus(client)}
                   </span>
                 </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {formatDate(client.createdAt)}
+                </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-1">
+                  <div className="flex justify-end gap-1.5">
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => onView(client)}
-                      className="hover:text-primary"
+                      className="h-8 w-8 rounded-md border border-border hover:text-primary"
                     >
                       <Eye className="w-4 h-4" />
                     </Button>
@@ -114,7 +153,7 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
                       variant="ghost"
                       size="icon"
                       onClick={() => onEdit(client)}
-                      className="hover:text-primary"
+                      className="h-8 w-8 rounded-md border border-border hover:text-primary"
                     >
                       <Edit2 className="w-4 h-4" />
                     </Button>
@@ -122,7 +161,7 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
                       variant="ghost"
                       size="icon"
                       onClick={() => setDeleteId(client.id)}
-                      className="hover:text-destructive"
+                      className="h-8 w-8 rounded-md border border-border hover:text-destructive"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
@@ -131,7 +170,8 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
               </TableRow>
             ))}
           </TableBody>
-        </Table>
+          </Table>
+        </div>
       </div>
 
       <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
