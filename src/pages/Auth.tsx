@@ -22,7 +22,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const { signIn, signUp, user } = useAuth();
-  const { currentAgency, isIsolated } = useAgency();
+  const { currentAgency } = useAgency();
   const navigate = useNavigate();
   const emailPlaceholder = currentAgency.id === "clabs" ? "squad@clabs.ag" : "ceo@corps.ag";
 
@@ -151,12 +151,6 @@ export default function Auth() {
               {loading ? "Entrando..." : "Entrar"}
             </Button>
           </form>
-
-          {isIsolated && (
-            <div className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary">
-              Ambiente isolado: acesso inicial CEO ceo@corps.ag / azul123. Tambem aceitamos ceo@agenciacorps.ag.
-            </div>
-          )}
 
           <div className="text-sm text-muted-foreground">
             Precisa de ajuda? <a className="font-semibold underline" href="mailto:suporte@clabs.ag">suporte@clabs.ag</a>
