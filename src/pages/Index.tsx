@@ -27,10 +27,10 @@ import {
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
 const Index = () => {
-  const { clients, totalFaturamento } = useClients();
+  const { clients } = useClients();
   const { demands } = useDemands();
   const { contracts } = useContracts();
-  const { transactions, totalEntradas, totalDespesas } = useTransactions();
+  const { transactions } = useTransactions();
   const { user } = useAuth();
   const storageKey = useMemo(() => `crm_revenue_goal_${user?.id ?? "anon"}`, [user?.id]);
   const [goal, setGoal] = useState(15000);
@@ -58,17 +58,21 @@ const Index = () => {
     }
   }, [goal, storageKey]);
 
-  // Calculate metrics from clients data
-  const metricsData = {
-    faturamento: totalFaturamento,
-    despesas: totalDespesas,
-    receitaAnual: totalFaturamento * 12,
-    pendentes: demands.filter((d) => d.status === "pendente" || d.status === "atrasada").length,
-    clientesAtivos: clients.length,
-    demandasEmAndamento: demands.filter((d) => d.status === "em_andamento").length,
-    contratosAtivos: contracts.length,
-    saldoFinanceiro: totalEntradas - totalDespesas,
-  };
+  const monthlyRecurringRevenue = useMemo(() => {
+    return clients.reduce((acc, client) => {
+      const value = Number(client.valorPago || 0);
+      if (value <= 0) return acc;
+
+      const monthlyFactor = {
+        mensal: 1,
+        trimestral: 1 / 3,
+        semestral: 1 / 6,
+        anual: 1 / 12,
+      };
+
+      return acc + value * monthlyFactor[client.recorrencia];
+    }, 0);
+  }, [clients]);
 
   // Get top clients sorted by value
   const topClientsData = [...clients]
@@ -100,26 +104,44 @@ const Index = () => {
     return data;
   }, [transactions, currentYear]);
 
-  const mrrProjectionData = useMemo(() => {
-    const avgFromEntries =
-      monthlyFinance.reduce((acc, m) => acc + m.entradas, 0) / (monthlyFinance.filter((m) => m.entradas > 0).length || 1);
-    const baseMrr = Math.max(totalFaturamento, avgFromEntries, 1000);
+  const yearlyTotals = useMemo(() => {
+    return monthlyFinance.reduce(
+      (acc, month) => ({
+        entradas: acc.entradas + month.entradas,
+        despesas: acc.despesas + month.despesas,
+      }),
+      { entradas: 0, despesas: 0 }
+    );
+  }, [monthlyFinance]);
 
+  // Calculate metrics from real dashboard sources
+  const metricsData = {
+    faturamento: yearlyTotals.entradas,
+    despesas: yearlyTotals.despesas,
+    receitaAnual: monthlyRecurringRevenue * 12,
+    pendentes: demands.filter((d) => d.status === "pendente" || d.status === "atrasada").length,
+    clientesAtivos: clients.filter((c) => Number(c.valorPago || 0) > 0).length,
+    demandasEmAndamento: demands.filter((d) => d.status === "em_andamento").length,
+    contratosAtivos: contracts.length,
+    saldoFinanceiro: yearlyTotals.entradas - yearlyTotals.despesas,
+  };
+
+  const mrrProjectionData = useMemo(() => {
     return monthlyFinance.map((m, index) => {
-      const progress = index / 11;
-      const projectedBase = baseMrr * (0.9 + progress * 0.25);
-      const adjustedFuture = index + 1 > currentMonth ? projectedBase * 1.03 : projectedBase;
-      const mrr = m.entradas > 0 ? m.entradas : adjustedFuture;
+      const isFutureMonth = index + 1 > currentMonth;
+      const mrr = isFutureMonth ? monthlyRecurringRevenue : m.entradas > 0 ? m.entradas : monthlyRecurringRevenue;
       return {
         ...m,
         mrr: Math.round(mrr),
+        source: isFutureMonth ? "projecao" : "real",
       };
     });
-  }, [monthlyFinance, totalFaturamento, currentMonth]);
+  }, [monthlyFinance, monthlyRecurringRevenue, currentMonth]);
 
   const miniFinanceData = useMemo(() => {
     const start = Math.max(0, currentMonth - 6);
-    return monthlyFinance.slice(start, currentMonth);
+    const recent = monthlyFinance.slice(start, currentMonth);
+    return recent.length > 0 ? recent : monthlyFinance.slice(0, 6);
   }, [monthlyFinance, currentMonth]);
 
   const currentMonthFinance = useMemo(() => {
@@ -139,6 +161,7 @@ const Index = () => {
 
   const profitPercent = Math.max(0, Math.min(100, Math.abs(currentMonthFinance.margem)));
   const isPositiveProfit = currentMonthFinance.lucro >= 0;
+  const marginLabel = `${currentMonthFinance.margem >= 0 ? "+" : ""}${currentMonthFinance.margem.toFixed(1)}%`;
   const profitGaugeData = [
     { name: "percentual", value: profitPercent },
     { name: "restante", value: 100 - profitPercent },
@@ -152,12 +175,12 @@ const Index = () => {
   };
 
   return (
-    <MainLayout totalCaixa={metricsData.faturamento}>
+    <MainLayout totalCaixa={metricsData.saldoFinanceiro}>
       <div className="space-y-6 animate-fade-in">
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           <MetricCard
-            title="Faturamento"
+            title="Entradas no Ano"
             value={formatCurrency(metricsData.faturamento)}
             icon={<DollarSign className="w-6 h-6" />}
             variant="primary"
@@ -211,7 +234,7 @@ const Index = () => {
             <div className="mb-3">
               <h3 className="text-base sm:text-lg font-semibold text-primary">MRR (Receita Recorrente Mensal) - Projecao</h3>
               <p className="text-xs sm:text-sm text-muted-foreground">
-                Valor esperado para {currentYear} com base em entradas reais e tendencia mensal.
+                Valor para {currentYear} com base em entradas reais e recorrencia ativa dos clientes.
               </p>
             </div>
             <div className="h-[220px] sm:h-[250px]">
@@ -287,28 +310,29 @@ const Index = () => {
 
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="text-sm sm:text-base font-semibold text-primary">Lucro Mensal</h3>
-              <div className="mt-3 h-[120px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={profitGaugeData}
-                      dataKey="value"
-                      innerRadius={34}
-                      outerRadius={48}
-                      startAngle={90}
-                      endAngle={-270}
-                      stroke="none"
-                    >
-                      <Cell fill={isPositiveProfit ? "hsl(var(--primary))" : "#ef4444"} />
-                      <Cell fill="hsl(var(--muted))" />
-                    </Pie>
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="-mt-[88px] mb-[64px] text-center">
-                <p className={`text-xl font-bold ${isPositiveProfit ? "text-primary" : "text-red-500"}`}>
-                  {currentMonthFinance.margem.toFixed(1)}%
-                </p>
+              <div className="relative mt-3 h-[140px]">
+                <div className="absolute inset-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={profitGaugeData}
+                        dataKey="value"
+                        innerRadius={38}
+                        outerRadius={54}
+                        startAngle={90}
+                        endAngle={-270}
+                        stroke="none"
+                      >
+                        <Cell fill={isPositiveProfit ? "hsl(var(--primary))" : "#ef4444"} />
+                        <Cell fill="hsl(var(--muted))" />
+                      </Pie>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
+                  <p className="text-[11px] uppercase tracking-wider text-muted-foreground">margem</p>
+                  <p className={`text-lg font-bold ${isPositiveProfit ? "text-primary" : "text-red-500"}`}>{marginLabel}</p>
+                </div>
               </div>
               <div className="space-y-1.5 text-xs">
                 <p className="text-emerald-400">Faturamento: {formatCurrency(currentMonthFinance.entradas)}</p>
