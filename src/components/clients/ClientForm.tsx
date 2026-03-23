@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { clientSchema, ClientSchemaType } from "@/lib/validations";
@@ -29,6 +30,20 @@ interface ClientFormProps {
   isEdit?: boolean;
 }
 
+interface CnpjApiResponse {
+  razao_social?: string;
+  nome_fantasia?: string;
+  descricao_tipo_de_logradouro?: string;
+  logradouro?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  municipio?: string;
+  uf?: string;
+  cep?: string;
+  ddd_telefone_1?: string;
+}
+
 export function ClientForm({
   open,
   onClose,
@@ -37,12 +52,15 @@ export function ClientForm({
   isEdit = false,
 }: ClientFormProps) {
   const { toast } = useToast();
+  const [isLookingUpCnpj, setIsLookingUpCnpj] = useState(false);
+  const [lastLookupCnpj, setLastLookupCnpj] = useState("");
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    getValues,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<ClientSchemaType>({
@@ -69,13 +87,67 @@ export function ClientForm({
     onClose();
   };
 
+  const cnpjField = register("cnpj");
+
+  const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
   const formatCNPJ = (value: string) => {
-    const cleaned = value.replace(/\D/g, "").slice(0, 14);
+    const cleaned = onlyDigits(value).slice(0, 14);
     return cleaned
       .replace(/^(\d{2})(\d)/, "$1.$2")
       .replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3")
       .replace(/\.(\d{3})(\d)/, ".$1/$2")
       .replace(/(\d{4})(\d)/, "$1-$2");
+  };
+
+  const buildAddress = (data: CnpjApiResponse) => {
+    const street = [data.descricao_tipo_de_logradouro, data.logradouro]
+      .filter(Boolean)
+      .join(" ");
+    const firstPart = [street, data.numero, data.complemento].filter(Boolean).join(", ");
+    const secondPart = [data.bairro, data.municipio, data.uf].filter(Boolean).join(" - ");
+    const cepPart = data.cep ? `CEP ${data.cep}` : "";
+    return [firstPart, secondPart, cepPart].filter(Boolean).join(" | ");
+  };
+
+  const lookupCnpj = async (cnpjInput: string) => {
+    const cnpj = onlyDigits(cnpjInput);
+    if (cnpj.length !== 14 || cnpj === lastLookupCnpj || isLookingUpCnpj) return;
+
+    setIsLookingUpCnpj(true);
+    try {
+      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
+      if (!response.ok) throw new Error("Não foi possível consultar o CNPJ");
+
+      const data = (await response.json()) as CnpjApiResponse;
+      const razaoSocial = data.razao_social || data.nome_fantasia || "";
+      const endereco = buildAddress(data);
+      const phone = data.ddd_telefone_1 || "";
+
+      if (razaoSocial) {
+        setValue("razaoSocial", razaoSocial, { shouldDirty: true, shouldValidate: true });
+      }
+      if (endereco) {
+        setValue("endereco", endereco, { shouldDirty: true, shouldValidate: true });
+      }
+      if (phone && !getValues("contatoInterno")) {
+        setValue("contatoInterno", phone, { shouldDirty: true, shouldValidate: true });
+      }
+
+      setLastLookupCnpj(cnpj);
+      toast({
+        title: "Dados preenchidos",
+        description: "Razão social e endereço foram carregados pelo CNPJ.",
+      });
+    } catch {
+      toast({
+        title: "CNPJ não encontrado",
+        description: "Não conseguimos buscar os dados automaticamente. Preencha manualmente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLookingUpCnpj(false);
+    }
   };
 
   return (
@@ -109,13 +181,20 @@ export function ClientForm({
               <Input
                 id="cnpj"
                 placeholder="00.000.000/0000-00"
-                {...register("cnpj")}
+                {...cnpjField}
                 onChange={(e) => {
                   const formatted = formatCNPJ(e.target.value);
-                  setValue("cnpj", formatted);
+                  setValue("cnpj", formatted, { shouldDirty: true, shouldValidate: true });
+                }}
+                onBlur={(e) => {
+                  cnpjField.onBlur(e);
+                  void lookupCnpj(e.target.value);
                 }}
                 className="bg-secondary border-border"
               />
+              {isLookingUpCnpj && (
+                <p className="text-xs text-muted-foreground">Buscando dados do CNPJ...</p>
+              )}
               {errors.cnpj && (
                 <p className="text-sm text-destructive">{errors.cnpj.message}</p>
               )}

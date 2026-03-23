@@ -8,7 +8,7 @@ interface MainLayoutProps {
   totalCaixa?: number;
 }
 
-export function MainLayout({ children, totalCaixa = 9700 }: MainLayoutProps) {
+export function MainLayout({ children, totalCaixa = 0 }: MainLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
