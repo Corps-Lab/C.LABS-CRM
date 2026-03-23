@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { clientSchema, ClientSchemaType } from "@/lib/validations";
@@ -54,6 +54,7 @@ export function ClientForm({
   const { toast } = useToast();
   const [isLookingUpCnpj, setIsLookingUpCnpj] = useState(false);
   const [lastLookupCnpj, setLastLookupCnpj] = useState("");
+  const lookupTimeoutRef = useRef<number | null>(null);
 
   const {
     register,
@@ -110,16 +111,38 @@ export function ClientForm({
     return [firstPart, secondPart, cepPart].filter(Boolean).join(" | ");
   };
 
+  const clearLookupTimeout = () => {
+    if (lookupTimeoutRef.current) {
+      window.clearTimeout(lookupTimeoutRef.current);
+      lookupTimeoutRef.current = null;
+    }
+  };
+
   const lookupCnpj = async (cnpjInput: string) => {
     const cnpj = onlyDigits(cnpjInput);
     if (cnpj.length !== 14 || cnpj === lastLookupCnpj || isLookingUpCnpj) return;
 
     setIsLookingUpCnpj(true);
     try {
-      const response = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`);
-      if (!response.ok) throw new Error("Não foi possível consultar o CNPJ");
+      const endpoints = [
+        `https://brasilapi.com.br/api/cnpj/v1/${cnpj}`,
+        `https://api.allorigins.win/raw?url=${encodeURIComponent(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)}`,
+      ];
+      let data: CnpjApiResponse | null = null;
+      let lastError: Error | null = null;
 
-      const data = (await response.json()) as CnpjApiResponse;
+      for (const endpoint of endpoints) {
+        try {
+          const response = await fetch(endpoint);
+          if (!response.ok) throw new Error("Falha na consulta de CNPJ");
+          data = (await response.json()) as CnpjApiResponse;
+          break;
+        } catch (err) {
+          lastError = err instanceof Error ? err : new Error("Falha na consulta");
+        }
+      }
+
+      if (!data) throw lastError || new Error("Não foi possível consultar o CNPJ");
       const razaoSocial = data.razao_social || data.nome_fantasia || "";
       const endereco = buildAddress(data);
       const phone = data.ddd_telefone_1 || "";
@@ -149,6 +172,25 @@ export function ClientForm({
       setIsLookingUpCnpj(false);
     }
   };
+
+  const scheduleLookup = (cnpjInput: string) => {
+    clearLookupTimeout();
+    lookupTimeoutRef.current = window.setTimeout(() => {
+      void lookupCnpj(cnpjInput);
+    }, 450);
+  };
+
+  useEffect(() => {
+    if (!open) {
+      clearLookupTimeout();
+      setIsLookingUpCnpj(false);
+      setLastLookupCnpj("");
+    }
+  }, [open]);
+
+  useEffect(() => {
+    return () => clearLookupTimeout();
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
@@ -185,9 +227,14 @@ export function ClientForm({
                 onChange={(e) => {
                   const formatted = formatCNPJ(e.target.value);
                   setValue("cnpj", formatted, { shouldDirty: true, shouldValidate: true });
+                  const digits = onlyDigits(formatted);
+                  if (digits.length === 14) {
+                    scheduleLookup(formatted);
+                  }
                 }}
                 onBlur={(e) => {
                   cnpjField.onBlur(e);
+                  clearLookupTimeout();
                   void lookupCnpj(e.target.value);
                 }}
                 className="bg-secondary border-border"
