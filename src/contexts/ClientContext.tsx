@@ -27,6 +27,7 @@ function mapClientRow(row: any, statusOverride?: ClientStatus): Client {
   return {
     id: row.id,
     razaoSocial: row.razao_social,
+    nomeFantasia: row.nome_fantasia || "",
     cnpj: row.cnpj,
     endereco: row.endereco || "",
     valorPago,
@@ -38,10 +39,10 @@ function mapClientRow(row: any, statusOverride?: ClientStatus): Client {
   };
 }
 
-function hasMissingStatusColumn(err: unknown): boolean {
+function hasMissingColumn(err: unknown, column: string): boolean {
   if (!err || typeof err !== "object") return false;
   const message = "message" in err ? String(err.message || "") : "";
-  return message.toLowerCase().includes("status") && message.toLowerCase().includes("column");
+  return message.toLowerCase().includes(column.toLowerCase()) && message.toLowerCase().includes("column");
 }
 
 export function ClientProvider({ children }: { children: ReactNode }) {
@@ -102,6 +103,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
           setClients(
             parsed.map((client) => ({
               ...client,
+              nomeFantasia: client.nomeFantasia || "",
               status: normalizeClientStatus(client.status, client.cnpj, client.valorPago),
             }))
           );
@@ -138,6 +140,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       const newClient: Client = {
         id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}`,
         razaoSocial: data.razaoSocial,
+        nomeFantasia: data.nomeFantasia || "",
         cnpj: data.cnpj,
         endereco: data.endereco,
         valorPago: data.valorPago,
@@ -157,6 +160,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
 
     const payload = {
       razao_social: data.razaoSocial,
+      nome_fantasia: data.nomeFantasia || null,
       cnpj: data.cnpj,
       endereco: data.endereco,
       valor_pago: data.valorPago,
@@ -168,21 +172,28 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     let inserted: any = null;
     let error: any = null;
     ({ data: inserted, error } = await supabase.from("clients").insert(payload).select().single());
-    if (error && hasMissingStatusColumn(error)) {
+    if (
+      error &&
+      (hasMissingColumn(error, "status") || hasMissingColumn(error, "nome_fantasia"))
+    ) {
+      const fallbackPayload: Record<string, unknown> = {
+        razao_social: data.razaoSocial,
+        cnpj: data.cnpj,
+        endereco: data.endereco,
+        valor_pago: data.valorPago,
+        recorrencia: data.recorrencia,
+        responsavel: data.responsavel,
+        contato_interno: data.contatoInterno,
+      };
       ({ data: inserted, error } = await supabase
         .from("clients")
-        .insert({
-          razao_social: data.razaoSocial,
-          cnpj: data.cnpj,
-          endereco: data.endereco,
-          valor_pago: data.valorPago,
-          recorrencia: data.recorrencia,
-          responsavel: data.responsavel,
-          contato_interno: data.contatoInterno,
-        })
+        .insert(fallbackPayload)
         .select()
         .single());
-      if (inserted) inserted.status = data.status;
+      if (inserted) {
+        inserted.status = inserted.status || data.status;
+        inserted.nome_fantasia = inserted.nome_fantasia || data.nomeFantasia || null;
+      }
     }
     if (error) throw error;
     const mapped: Client = mapClientRow(inserted);
@@ -214,6 +225,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
             ? {
                 ...client,
                 razaoSocial: data.razaoSocial,
+                nomeFantasia: data.nomeFantasia || "",
                 cnpj: data.cnpj,
                 endereco: data.endereco,
                 valorPago: data.valorPago,
@@ -236,6 +248,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       .from("clients")
       .update({
         razao_social: data.razaoSocial,
+        nome_fantasia: data.nomeFantasia || null,
         cnpj: data.cnpj,
         endereco: data.endereco,
         valor_pago: data.valorPago,
@@ -247,22 +260,29 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       .eq("id", id)
       .select()
       .single());
-    if (error && hasMissingStatusColumn(error)) {
+    if (
+      error &&
+      (hasMissingColumn(error, "status") || hasMissingColumn(error, "nome_fantasia"))
+    ) {
+      const fallbackPayload: Record<string, unknown> = {
+        razao_social: data.razaoSocial,
+        cnpj: data.cnpj,
+        endereco: data.endereco,
+        valor_pago: data.valorPago,
+        recorrencia: data.recorrencia,
+        responsavel: data.responsavel,
+        contato_interno: data.contatoInterno,
+      };
       ({ data: updated, error } = await supabase
         .from("clients")
-        .update({
-          razao_social: data.razaoSocial,
-          cnpj: data.cnpj,
-          endereco: data.endereco,
-          valor_pago: data.valorPago,
-          recorrencia: data.recorrencia,
-          responsavel: data.responsavel,
-          contato_interno: data.contatoInterno,
-        })
+        .update(fallbackPayload)
         .eq("id", id)
         .select()
         .single());
-      if (updated) updated.status = data.status;
+      if (updated) {
+        updated.status = updated.status || data.status;
+        updated.nome_fantasia = updated.nome_fantasia || data.nomeFantasia || null;
+      }
     }
     if (error) throw error;
     writeStatusOverride(updated.id, normalizeClientStatus(updated.status || data.status, updated.cnpj, Number(updated.valor_pago || 0)));

@@ -110,6 +110,9 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
                 <TableCell className="font-medium text-foreground">
                   <div className="space-y-0.5">
                     <p>{client.razaoSocial}</p>
+                    {client.nomeFantasia && (
+                      <p className="text-xs text-muted-foreground">Fantasia: {client.nomeFantasia}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {formatCurrency(client.valorPago)} • {recorrenciaLabel[client.recorrencia]}
                     </p>

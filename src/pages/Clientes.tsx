@@ -44,6 +44,7 @@ export default function Clientes() {
     (client) => {
       const searchMatch =
         client.razaoSocial.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (client.nomeFantasia || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.cnpj.includes(searchTerm) ||
         client.responsavel.toLowerCase().includes(searchTerm.toLowerCase()) ||
         client.contatoInterno.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -185,7 +186,7 @@ export default function Clientes() {
             <div className="relative md:col-span-6">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Buscar cliente por nome, CNPJ, responsavel ou contato..."
+                placeholder="Buscar por razão social, nome fantasia, CNPJ, responsável ou contato..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -255,6 +256,7 @@ export default function Clientes() {
             editingClient
               ? {
                   razaoSocial: editingClient.razaoSocial,
+                  nomeFantasia: editingClient.nomeFantasia || "",
                   cnpj: editingClient.cnpj,
                   endereco: editingClient.endereco,
                   valorPago: editingClient.valorPago,

@@ -36,6 +36,7 @@ export function ClientDetails({ client, open, onClose }: ClientDetailsProps) {
 
   const details = [
     { icon: Building2, label: "CNPJ", value: client.cnpj },
+    { icon: Building2, label: "Nome Fantasia", value: client.nomeFantasia || "—" },
     {
       icon: User,
       label: "Status",

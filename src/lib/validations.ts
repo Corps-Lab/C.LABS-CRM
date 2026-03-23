@@ -21,6 +21,12 @@ export const clientSchema = z.object({
     .trim()
     .min(3, "Razão Social deve ter no mínimo 3 caracteres")
     .max(200, "Razão Social deve ter no máximo 200 caracteres"),
+  nomeFantasia: z
+    .string()
+    .trim()
+    .max(200, "Nome Fantasia deve ter no máximo 200 caracteres")
+    .optional()
+    .default(""),
   cnpj: z
     .string()
     .trim()

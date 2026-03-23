@@ -68,6 +68,7 @@ export function ClientForm({
     resolver: zodResolver(clientSchema),
     defaultValues: defaultValues || {
       razaoSocial: "",
+      nomeFantasia: "",
       cnpj: "",
       endereco: "",
       valorPago: 0,
@@ -144,11 +145,15 @@ export function ClientForm({
 
       if (!data) throw lastError || new Error("Não foi possível consultar o CNPJ");
       const razaoSocial = data.razao_social || data.nome_fantasia || "";
+      const nomeFantasia = data.nome_fantasia || "";
       const endereco = buildAddress(data);
       const phone = data.ddd_telefone_1 || "";
 
       if (razaoSocial) {
         setValue("razaoSocial", razaoSocial, { shouldDirty: true, shouldValidate: true });
+      }
+      if (nomeFantasia) {
+        setValue("nomeFantasia", nomeFantasia, { shouldDirty: true, shouldValidate: true });
       }
       if (endereco) {
         setValue("endereco", endereco, { shouldDirty: true, shouldValidate: true });
@@ -160,7 +165,7 @@ export function ClientForm({
       setLastLookupCnpj(cnpj);
       toast({
         title: "Dados preenchidos",
-        description: "Razão social e endereço foram carregados pelo CNPJ.",
+        description: "Razão social, nome fantasia e endereço foram carregados pelo CNPJ.",
       });
     } catch {
       toast({
@@ -214,6 +219,20 @@ export function ClientForm({
               />
               {errors.razaoSocial && (
                 <p className="text-sm text-destructive">{errors.razaoSocial.message}</p>
+              )}
+            </div>
+
+            {/* Nome Fantasia */}
+            <div className="md:col-span-2 space-y-2">
+              <Label htmlFor="nomeFantasia">Nome Fantasia</Label>
+              <Input
+                id="nomeFantasia"
+                placeholder="Nome fantasia"
+                {...register("nomeFantasia")}
+                className="bg-secondary border-border"
+              />
+              {errors.nomeFantasia && (
+                <p className="text-sm text-destructive">{errors.nomeFantasia.message}</p>
               )}
             </div>
 

@@ -3,6 +3,7 @@ export type ClientStatus = "ativo" | "prospect" | "inativo" | "inadimplente";
 export interface Client {
   id: string;
   razaoSocial: string;
+  nomeFantasia: string;
   cnpj: string;
   endereco: string;
   valorPago: number;
