@@ -1,4 +1,4 @@
-const CACHE_NAME = "clabs-crm-static-v10";
+const CACHE_NAME = "clabs-crm-static-v11";
 const OFFLINE_URL = "/C.LABS-CRM/index.html";
 
 self.addEventListener("install", (event) => {
@@ -13,10 +13,16 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.map((k) => (k === CACHE_NAME ? Promise.resolve(false) : caches.delete(k))))
     )
   );
   self.clients.claim();
+});
+
+self.addEventListener("message", (event) => {
+  if (event.data && event.data.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener("fetch", (event) => {
@@ -25,7 +31,7 @@ self.addEventListener("fetch", (event) => {
   // App shell for navigations
   if (request.mode === "navigate") {
     event.respondWith(
-      fetch(request)
+      fetch(request.url, { cache: "no-store" })
         .then((resp) => {
           if (resp.ok) return resp;
           return caches.match(OFFLINE_URL);
@@ -43,7 +49,7 @@ self.addEventListener("fetch", (event) => {
   // Network-first for static assets to avoid stale bundles after deploy
   if (["style", "script", "image", "font"].includes(request.destination)) {
     event.respondWith(
-      fetch(request)
+      fetch(request.url, { cache: "no-store" })
         .then((resp) => {
           if (!resp || !resp.ok) return caches.match(request);
           const clone = resp.clone();
