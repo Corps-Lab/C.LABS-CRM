@@ -55,6 +55,10 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     () => `crm_${currentAgency.id}_client_status_overrides_${user?.id ?? "anon"}`,
     [currentAgency.id, user?.id]
   );
+  const nomeFantasiaOverridesKey = useMemo(
+    () => `crm_${currentAgency.id}_client_nome_fantasia_overrides_${user?.id ?? "anon"}`,
+    [currentAgency.id, user?.id]
+  );
 
   const readStatusOverrides = (): Record<string, ClientStatus> => {
     try {
@@ -91,6 +95,41 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const readNomeFantasiaOverrides = (): Record<string, string> => {
+    try {
+      const raw = localStorage.getItem(nomeFantasiaOverridesKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (!parsed || typeof parsed !== "object") return {};
+      return Object.fromEntries(
+        Object.entries(parsed).filter(
+          (entry): entry is [string, string] => typeof entry[1] === "string"
+        )
+      );
+    } catch {
+      return {};
+    }
+  };
+
+  const writeNomeFantasiaOverride = (id: string, nomeFantasia: string) => {
+    try {
+      const prev = readNomeFantasiaOverrides();
+      localStorage.setItem(nomeFantasiaOverridesKey, JSON.stringify({ ...prev, [id]: nomeFantasia || "" }));
+    } catch {
+      // ignore storage errors
+    }
+  };
+
+  const removeNomeFantasiaOverride = (id: string) => {
+    try {
+      const prev = readNomeFantasiaOverrides();
+      if (!(id in prev)) return;
+      delete prev[id];
+      localStorage.setItem(nomeFantasiaOverridesKey, JSON.stringify(prev));
+    } catch {
+      // ignore storage errors
+    }
+  };
+
   // Carrega clientes do Supabase
   useEffect(() => {
     const load = async () => {
@@ -122,7 +161,12 @@ export function ClientProvider({ children }: { children: ReactNode }) {
           .order("created_at", { ascending: false });
         if (error) throw error;
         const overrides = readStatusOverrides();
-        const mapped = data?.map((c) => mapClientRow(c, overrides[c.id])) || [];
+        const nomeFantasiaOverrides = readNomeFantasiaOverrides();
+        const mapped =
+          data?.map((c) => ({
+            ...mapClientRow(c, overrides[c.id]),
+            nomeFantasia: c.nome_fantasia || nomeFantasiaOverrides[c.id] || "",
+          })) || [];
         setClients(mapped);
       } catch (err) {
         console.error("Erro ao carregar clientes", err);
@@ -132,7 +176,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       }
     };
     load();
-  }, [user, isIsolated, storageKey, statusOverridesKey]);
+  }, [user, isIsolated, storageKey, statusOverridesKey, nomeFantasiaOverridesKey]);
 
   const addClient = async (data: ClientFormData) => {
     // Modo mock: apenas grava localmente
@@ -198,6 +242,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
     if (error) throw error;
     const mapped: Client = mapClientRow(inserted);
     writeStatusOverride(mapped.id, mapped.status);
+    writeNomeFantasiaOverride(mapped.id, mapped.nomeFantasia || data.nomeFantasia || "");
     setClients((prev) => [mapped, ...prev]);
   };
 
@@ -209,12 +254,14 @@ export function ClientProvider({ children }: { children: ReactNode }) {
         return next;
       });
       removeStatusOverride(id);
+      removeNomeFantasiaOverride(id);
       return;
     }
     const { error } = await supabase.from("clients").delete().eq("id", id);
     if (error) throw error;
     setClients((prev) => prev.filter((client) => client.id !== id));
     removeStatusOverride(id);
+    removeNomeFantasiaOverride(id);
   };
 
   const updateClient = async (id: string, data: ClientFormData) => {
@@ -285,6 +332,7 @@ export function ClientProvider({ children }: { children: ReactNode }) {
       }
     }
     if (error) throw error;
+    writeNomeFantasiaOverride(updated.id, updated.nome_fantasia || data.nomeFantasia || "");
     writeStatusOverride(updated.id, normalizeClientStatus(updated.status || data.status, updated.cnpj, Number(updated.valor_pago || 0)));
     setClients((prev) =>
       prev.map((client) =>
