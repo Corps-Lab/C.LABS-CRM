@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from "react";
 import { User, Session } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { safeId } from "@/lib/safeId";
 import { useAgency } from "./AgencyContext";
 
@@ -12,12 +11,27 @@ const mockUsers = [
 ];
 
 type AppRole = "admin" | "colaborador" | "ceo";
+type AccessControlStatusRow = {
+  is_active?: boolean | null;
+};
+
+type AccessControlsLookupClient = {
+  from: (table: string) => {
+    select: (columns: string) => {
+      eq: (column: string, value: string) => {
+        maybeSingle: () => Promise<{ data: AccessControlStatusRow | null; error: unknown }>;
+      };
+    };
+  };
+};
+
 type LocalUserRecord = {
   id: string;
   email: string;
   password: string;
   nome: string;
   role: AppRole;
+  active?: boolean;
   telefone?: string | null;
   cpf?: string | null;
   cargo?: string | null;
@@ -82,6 +96,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const localUsersKey = useMemo(() => `crm_${currentAgency.id}_users`, [currentAgency.id]);
   const localSessionKey = useMemo(() => `crm_${currentAgency.id}_session`, [currentAgency.id]);
+  const accessStatusOverridesKey = useMemo(
+    () => `crm_${currentAgency.id}_access_status_overrides`,
+    [currentAgency.id]
+  );
+
+  const normalizeLocalUsers = (users: LocalUserRecord[]) =>
+    users.map((userRecord) => ({
+      ...userRecord,
+      email: normalizeAgencyEmail(userRecord.email, currentAgency.id),
+      active: userRecord.active !== false,
+    }));
+
+  const readAccessStatusOverrides = (): Record<string, boolean> => {
+    try {
+      const raw = localStorage.getItem(accessStatusOverridesKey);
+      const parsed = raw ? JSON.parse(raw) : {};
+      if (!parsed || typeof parsed !== "object") return {};
+      return Object.fromEntries(
+        Object.entries(parsed).filter(
+          (entry): entry is [string, boolean] => typeof entry[1] === "boolean"
+        )
+      );
+    } catch {
+      return {};
+    }
+  };
+
+  const isAccessControlsMissingError = (error: unknown) => {
+    if (!error || typeof error !== "object") return false;
+    const message = "message" in error ? String(error.message || "").toLowerCase() : "";
+    return message.includes("access_controls") && (message.includes("relation") || message.includes("schema cache"));
+  };
+
+  const getRemoteAccessStatus = async (userId: string): Promise<boolean | null> => {
+    try {
+      const accessControlsClient = supabase as unknown as AccessControlsLookupClient;
+      const { data, error } = await accessControlsClient
+        .from("access_controls")
+        .select("is_active")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) {
+        if (isAccessControlsMissingError(error)) return null;
+        console.warn("Erro ao buscar status de acesso remoto:", error);
+        return null;
+      }
+
+      if (!data || typeof data.is_active !== "boolean") return null;
+      return data.is_active;
+    } catch {
+      return null;
+    }
+  };
 
   const migrateLegacyCorpsIdentity = () => {
     if (currentAgency.id !== "corps") return;
@@ -90,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const rawUsers = localStorage.getItem(localUsersKey);
       if (rawUsers) {
         const parsedUsers = JSON.parse(rawUsers) as LocalUserRecord[];
-        const migratedUsers = parsedUsers.map((userRecord) => ({
+        const migratedUsers = normalizeLocalUsers(parsedUsers).map((userRecord) => ({
           ...userRecord,
           email: normalizeAgencyEmail(userRecord.email, "corps"),
         }));
@@ -114,7 +182,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loadLocalUsers = (): LocalUserRecord[] => {
     try {
       const raw = localStorage.getItem(localUsersKey);
-      return raw ? (JSON.parse(raw) as LocalUserRecord[]) : [];
+      const parsed = raw ? (JSON.parse(raw) as LocalUserRecord[]) : [];
+      return normalizeLocalUsers(parsed);
     } catch {
       return [];
     }
@@ -138,6 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: "azul123",
       nome: `CEO ${currentAgency.name}`,
       role: "ceo" as AppRole,
+      active: true,
       cpf: null,
       cargo: "CEO",
     };
@@ -255,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           (u) => normalizeAgencyEmail(u.email, currentAgency.id) === normalizedInputEmail && u.password === password
         );
         if (!found) throw new Error("Credenciais inválidas para esta agência");
+        if (found.active === false) throw new Error("Acesso inativo. Fale com o administrador.");
         const localUser = { id: found.id || safeId("user"), email: found.email, user_metadata: { name: found.nome } } as unknown as User;
         setUser(localUser);
         setSession(null);
@@ -303,11 +374,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         throw new Error("Selecione a agência 'Agência Corps' para usar este acesso.");
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email: normalizedEmail,
         password,
       });
       if (error) throw error;
+
+      const signedInUserId = data.user?.id;
+      if (signedInUserId) {
+        const remoteStatus = await getRemoteAccessStatus(signedInUserId);
+        const localStatus = readAccessStatusOverrides()[signedInUserId];
+        const isActive = remoteStatus ?? localStatus ?? true;
+        if (!isActive) {
+          await supabase.auth.signOut();
+          throw new Error("Acesso inativo. Peça ativação ao administrador.");
+        }
+      }
       return { error: null };
     } catch (error) {
       return { error: error as Error };
@@ -331,6 +413,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           cpf: cpf || null,
           cargo: cargo || null,
           role,
+          active: true,
         };
         persistLocalUsers([...users, localUser]);
         // Auto-login apenas se não houver usuário ativo (ex: criação pela tela de login)

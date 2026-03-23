@@ -25,7 +25,7 @@ import { X } from "lucide-react";
 interface ClientFormProps {
   open: boolean;
   onClose: () => void;
-  onSubmit: (data: ClientSchemaType) => void;
+  onSubmit: (data: ClientSchemaType) => void | Promise<void>;
   defaultValues?: ClientSchemaType;
   isEdit?: boolean;
 }
@@ -55,6 +55,18 @@ export function ClientForm({
   const [isLookingUpCnpj, setIsLookingUpCnpj] = useState(false);
   const [lastLookupCnpj, setLastLookupCnpj] = useState("");
   const lookupTimeoutRef = useRef<number | null>(null);
+  const previousOpenRef = useRef(false);
+  const emptyValues: ClientSchemaType = {
+    razaoSocial: "",
+    nomeFantasia: "",
+    cnpj: "",
+    endereco: "",
+    valorPago: 0,
+    recorrencia: "mensal",
+    status: "ativo",
+    responsavel: "",
+    contatoInterno: "",
+  };
 
   const {
     register,
@@ -66,27 +78,21 @@ export function ClientForm({
     formState: { errors, isSubmitting },
   } = useForm<ClientSchemaType>({
     resolver: zodResolver(clientSchema),
-    defaultValues: defaultValues || {
-      razaoSocial: "",
-      nomeFantasia: "",
-      cnpj: "",
-      endereco: "",
-      valorPago: 0,
-      recorrencia: "mensal",
-      status: "ativo",
-      responsavel: "",
-      contatoInterno: "",
-    },
+    defaultValues: defaultValues || emptyValues,
   });
 
-  const handleFormSubmit = (data: ClientSchemaType) => {
-    onSubmit(data);
-    toast({
-      title: isEdit ? "Cliente atualizado!" : "Cliente cadastrado!",
-      description: `${data.razaoSocial} foi ${isEdit ? "atualizado" : "adicionado"} com sucesso.`,
-    });
-    reset();
-    onClose();
+  const handleFormSubmit = async (data: ClientSchemaType) => {
+    try {
+      await onSubmit(data);
+      toast({
+        title: isEdit ? "Cliente atualizado!" : "Cliente cadastrado!",
+        description: `${data.razaoSocial} foi ${isEdit ? "atualizado" : "adicionado"} com sucesso.`,
+      });
+      reset(emptyValues);
+      onClose();
+    } catch {
+      // O erro e feedback já são tratados pela tela que chama o formulário.
+    }
   };
 
   const cnpjField = register("cnpj");
@@ -186,12 +192,21 @@ export function ClientForm({
   };
 
   useEffect(() => {
+    const hasJustOpened = open && !previousOpenRef.current;
+    previousOpenRef.current = open;
+
+    if (hasJustOpened) {
+      const nextDefaults = defaultValues || emptyValues;
+      reset(nextDefaults);
+      setLastLookupCnpj(onlyDigits(nextDefaults.cnpj));
+    }
+
     if (!open) {
       clearLookupTimeout();
       setIsLookingUpCnpj(false);
       setLastLookupCnpj("");
     }
-  }, [open]);
+  }, [defaultValues, open, reset]);
 
   useEffect(() => {
     return () => clearLookupTimeout();
