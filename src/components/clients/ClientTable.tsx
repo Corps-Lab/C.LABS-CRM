@@ -47,9 +47,9 @@ export function ClientTable({ clients, onEdit, onDelete, onView }: ClientTablePr
   };
 
   const statusClassName: Record<string, string> = {
-    ativo: "bg-primary/15 text-primary border-primary/30",
+    ativo: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
     inativo: "bg-destructive/10 text-destructive border-destructive/30",
-    prospect: "bg-muted text-muted-foreground border-border",
+    prospect: "bg-blue-500/15 text-blue-400 border-blue-500/30",
     inadimplente: "bg-amber-500/15 text-amber-400 border-amber-500/30",
   };
   const statusLabel: Record<string, string> = Object.fromEntries(

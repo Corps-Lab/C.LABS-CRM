@@ -134,32 +134,32 @@ export default function Clientes() {
           </div>
           <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
             <div className="mb-3 flex items-center justify-between">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
-                <UserCheck2 className="h-4 w-4 text-primary" />
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-emerald-500/30 bg-emerald-500/10">
+                <UserCheck2 className="h-4 w-4 text-emerald-400" />
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Ativos</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{loading ? "--" : activeClients}</p>
+            <p className="text-2xl font-bold text-emerald-400">{loading ? "--" : activeClients}</p>
             <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Clientes ativos</p>
           </div>
           <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
             <div className="mb-3 flex items-center justify-between">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
-                <UserX2 className="h-4 w-4 text-primary" />
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-red-500/30 bg-red-500/10">
+                <UserX2 className="h-4 w-4 text-red-400" />
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Inativos</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{loading ? "--" : inactiveClients}</p>
+            <p className="text-2xl font-bold text-red-400">{loading ? "--" : inactiveClients}</p>
             <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Clientes inativos</p>
           </div>
           <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
             <div className="mb-3 flex items-center justify-between">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-primary/30 bg-primary/10">
-                <UserPlus2 className="h-4 w-4 text-primary" />
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-blue-500/30 bg-blue-500/10">
+                <UserPlus2 className="h-4 w-4 text-blue-400" />
               </span>
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground">Pipeline</span>
             </div>
-            <p className="text-2xl font-bold text-foreground">{loading ? "--" : prospectClients}</p>
+            <p className="text-2xl font-bold text-blue-400">{loading ? "--" : prospectClients}</p>
             <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">Prospects</p>
           </div>
           <div className="rounded-xl border border-border bg-card/70 p-4 card-glow-hover">
