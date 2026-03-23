@@ -1,4 +1,4 @@
-const CACHE_NAME = "clabs-crm-static-v9";
+const CACHE_NAME = "clabs-crm-static-v10";
 const OFFLINE_URL = "/C.LABS-CRM/index.html";
 
 self.addEventListener("install", (event) => {
