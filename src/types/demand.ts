@@ -12,6 +12,7 @@ export interface Demand {
   descricao: string;
   dataPedido: Date;
   dataEntrega: Date;
+  horaEntrega: string;
   responsavel: string;
   status: "pendente" | "em_andamento" | "concluida" | "atrasada";
   prioridade: "baixa" | "media" | "alta" | "urgente";

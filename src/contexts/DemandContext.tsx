@@ -22,6 +22,22 @@ const DemandContext = createContext<DemandContextType | undefined>(undefined);
 // Dados zerados para novo ciclo
 const initialDemands: Demand[] = [];
 
+function hasMissingColumn(err: unknown, column: string): boolean {
+  if (!err || typeof err !== "object") return false;
+  const message = "message" in err ? String(err.message || "") : "";
+  return message.toLowerCase().includes(column.toLowerCase()) && message.toLowerCase().includes("column");
+}
+
+function normalizeDeliveryTime(value: unknown): string {
+  if (typeof value !== "string" || !value.trim()) return "18:00";
+  const match = value.trim().match(/^(\d{1,2}):(\d{2})/);
+  if (!match) return "18:00";
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return "18:00";
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+}
+
 export function DemandProvider({ children }: { children: ReactNode }) {
   const [demands, setDemands] = useState<Demand[]>(initialDemands);
   const [loading, setLoading] = useState(true);
@@ -72,6 +88,7 @@ export function DemandProvider({ children }: { children: ReactNode }) {
       descricao: (row.descricao as string) || "",
       dataPedido: row.data_pedido ? new Date(row.data_pedido as string) : new Date(),
       dataEntrega: row.data_entrega ? new Date(row.data_entrega as string) : new Date(),
+      horaEntrega: normalizeDeliveryTime(row.hora_entrega),
       responsavel: (row.responsavel as string) || "",
       status: normalizeStatus(row.status),
       prioridade: normalizePrioridade(row.prioridade),
@@ -86,7 +103,15 @@ export function DemandProvider({ children }: { children: ReactNode }) {
       try {
         const raw = localStorage.getItem(storageKey);
         const parsed: Demand[] = raw ? JSON.parse(raw) : [];
-        setDemands(parsed.map((d) => ({ ...d, dataPedido: new Date(d.dataPedido), dataEntrega: new Date(d.dataEntrega), createdAt: new Date(d.createdAt) })));
+        setDemands(
+          parsed.map((d) => ({
+            ...d,
+            dataPedido: new Date(d.dataPedido),
+            dataEntrega: new Date(d.dataEntrega),
+            horaEntrega: normalizeDeliveryTime((d as Partial<Demand>).horaEntrega),
+            createdAt: new Date(d.createdAt),
+          }))
+        );
       } catch {
         setDemands([]);
       } finally {
@@ -126,6 +151,7 @@ export function DemandProvider({ children }: { children: ReactNode }) {
         descricao: data.descricao || "",
         dataPedido: data.dataPedido,
         dataEntrega: data.dataEntrega,
+        horaEntrega: normalizeDeliveryTime(data.horaEntrega),
         responsavel: data.responsavel,
         status: data.status,
         prioridade: data.prioridade,
@@ -146,17 +172,39 @@ export function DemandProvider({ children }: { children: ReactNode }) {
         descricao: data.descricao || "",
         data_pedido: data.dataPedido.toISOString().split("T")[0],
         data_entrega: data.dataEntrega.toISOString().split("T")[0],
+        hora_entrega: `${normalizeDeliveryTime(data.horaEntrega)}:00`,
         responsavel: data.responsavel,
         status: data.status,
         prioridade: data.prioridade,
         created_by: user?.id ?? null,
       };
 
-      const { data: inserted, error } = await supabase
+      let inserted: { id: string } | null = null;
+      let error: unknown = null;
+      ({ data: inserted, error } = await supabase
         .from("demands")
         .insert(payload)
         .select("id")
-        .single();
+        .single());
+
+      if (error && hasMissingColumn(error, "hora_entrega")) {
+        const fallbackPayload = {
+          client_id: data.clientId || null,
+          demanda: data.demanda,
+          descricao: data.descricao || "",
+          data_pedido: data.dataPedido.toISOString().split("T")[0],
+          data_entrega: data.dataEntrega.toISOString().split("T")[0],
+          responsavel: data.responsavel,
+          status: data.status,
+          prioridade: data.prioridade,
+          created_by: user?.id ?? null,
+        };
+        ({ data: inserted, error } = await supabase
+          .from("demands")
+          .insert(fallbackPayload)
+          .select("id")
+          .single());
+      }
 
       if (error) throw error;
 
@@ -206,6 +254,7 @@ export function DemandProvider({ children }: { children: ReactNode }) {
                 ...data,
                 dataPedido: data.dataPedido ?? d.dataPedido,
                 dataEntrega: data.dataEntrega ?? d.dataEntrega,
+                horaEntrega: normalizeDeliveryTime(data.horaEntrega ?? d.horaEntrega),
                 clientName: data.clientId ? clients.find((c) => c.id === data.clientId)?.razaoSocial || d.clientName : d.clientName,
                 tarefas: data.tarefas ?? d.tarefas,
               }
@@ -223,12 +272,20 @@ export function DemandProvider({ children }: { children: ReactNode }) {
       if (data.descricao !== undefined) payload.descricao = data.descricao;
       if (data.dataPedido) payload.data_pedido = data.dataPedido.toISOString().split("T")[0];
       if (data.dataEntrega) payload.data_entrega = data.dataEntrega.toISOString().split("T")[0];
+      if (data.horaEntrega !== undefined) {
+        payload.hora_entrega = `${normalizeDeliveryTime(data.horaEntrega)}:00`;
+      }
       if (data.responsavel !== undefined) payload.responsavel = data.responsavel;
       if (data.status !== undefined) payload.status = data.status;
       if (data.prioridade !== undefined) payload.prioridade = data.prioridade;
 
       if (Object.keys(payload).length > 0) {
-        const { error } = await supabase.from("demands").update(payload).eq("id", id);
+        let { error } = await supabase.from("demands").update(payload).eq("id", id);
+        if (error && hasMissingColumn(error, "hora_entrega")) {
+          const fallbackPayload = { ...payload };
+          delete fallbackPayload.hora_entrega;
+          ({ error } = await supabase.from("demands").update(fallbackPayload).eq("id", id));
+        }
         if (error) throw error;
       }
 

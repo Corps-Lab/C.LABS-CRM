@@ -33,18 +33,24 @@ export function DemandCard({ demand, onEdit, onDelete }: DemandCardProps) {
   const prioridadeInfo = prioridadeOptions.find((p) => p.value === demand.prioridade);
 
   const entrega = new Date(demand.dataEntrega);
+  const normalizedHour = /^\d{2}:\d{2}$/.test(demand.horaEntrega || "")
+    ? demand.horaEntrega
+    : "18:00";
+  const [entregaHour, entregaMinute] = normalizedHour.split(":").map(Number);
+  const entregaDateTime = new Date(entrega);
+  entregaDateTime.setHours(entregaHour, entregaMinute, 0, 0);
   const daysUntil = differenceInDays(entrega, new Date());
 
   const getDeadlineText = () => {
-    if (isPast(entrega) && demand.status !== "concluida") return "Atrasado";
-    if (isToday(entrega)) return "Hoje";
-    if (isTomorrow(entrega)) return "Amanhã";
+    if (isPast(entregaDateTime) && demand.status !== "concluida") return "Atrasado";
+    if (isToday(entrega)) return `Hoje ${normalizedHour}`;
+    if (isTomorrow(entrega)) return `Amanhã ${normalizedHour}`;
     if (daysUntil <= 7) return `${daysUntil} dias`;
-    return format(entrega, "dd/MM", { locale: ptBR });
+    return `${format(entrega, "dd/MM", { locale: ptBR })} ${normalizedHour}`;
   };
 
   const getDeadlineColor = () => {
-    if (isPast(entrega) && demand.status !== "concluida") return "text-red-400";
+    if (isPast(entregaDateTime) && demand.status !== "concluida") return "text-red-400";
     if (isToday(entrega) || isTomorrow(entrega)) return "text-orange-400";
     return "text-muted-foreground";
   };
@@ -147,7 +153,7 @@ export function DemandCard({ demand, onEdit, onDelete }: DemandCardProps) {
           </div>
           <div className={cn("flex items-center gap-1", getDeadlineColor())}>
             <Calendar className="w-3 h-3" />
-            <span>Entrega: {format(entrega, "dd/MM/yy")}</span>
+            <span>Entrega: {format(entrega, "dd/MM/yy")} {normalizedHour}</span>
           </div>
         </div>
       </CardContent>

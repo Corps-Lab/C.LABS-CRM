@@ -44,6 +44,9 @@ const demandSchema = z.object({
   descricao: z.string().trim().optional(),
   dataPedido: z.date(),
   dataEntrega: z.date(),
+  horaEntrega: z
+    .string()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Informe um horário válido"),
   responsavel: z.string().trim().min(2, "Informe o responsável"),
   status: z.enum(["pendente", "em_andamento", "concluida", "atrasada"]),
   prioridade: z.enum(["baixa", "media", "alta", "urgente"]),
@@ -108,6 +111,19 @@ export function DemandForm({
     return "media";
   };
 
+  const normalizeDeliveryTime = (value?: string) => {
+    if (!value) return "18:00";
+    const match = value.match(/^(\d{2}):(\d{2})/);
+    if (match) {
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      if (hour >= 0 && hour <= 23 && minute >= 0 && minute <= 59) {
+        return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
+      }
+    }
+    return "18:00";
+  };
+
   const toFormDefaults = (values?: Partial<DemandFormData>): DemandSchemaType => {
     const status = typeof values?.status === "string" ? values.status : undefined;
     const prioridade = typeof values?.prioridade === "string" ? values.prioridade : undefined;
@@ -118,6 +134,7 @@ export function DemandForm({
       descricao: values?.descricao || "",
       dataPedido: values?.dataPedido ? new Date(values.dataPedido) : new Date(),
       dataEntrega: values?.dataEntrega ? new Date(values.dataEntrega) : new Date(),
+      horaEntrega: normalizeDeliveryTime(values?.horaEntrega),
       responsavel: values?.responsavel || "",
       status: normalizeDemandStatus(status),
       prioridade: normalizeDemandPriority(prioridade),
@@ -290,6 +307,7 @@ export function DemandForm({
       descricao: data.descricao || "",
       dataPedido: data.dataPedido,
       dataEntrega: data.dataEntrega,
+      horaEntrega: data.horaEntrega,
       responsavel: data.responsavel,
       status: data.status,
       prioridade: data.prioridade,
@@ -388,7 +406,7 @@ export function DemandForm({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Data Pedido */}
             <div className="space-y-2">
               <Label>Data do Pedido *</Label>
@@ -447,6 +465,21 @@ export function DemandForm({
                   />
                 </PopoverContent>
               </Popover>
+            </div>
+
+            {/* Horário de Entrega */}
+            <div className="space-y-2">
+              <Label htmlFor="horaEntrega">Horário de Entrega *</Label>
+              <Input
+                id="horaEntrega"
+                type="time"
+                step="60"
+                {...register("horaEntrega")}
+                className="bg-secondary border-border"
+              />
+              {errors.horaEntrega && (
+                <p className="text-sm text-destructive">{errors.horaEntrega.message}</p>
+              )}
             </div>
           </div>
 

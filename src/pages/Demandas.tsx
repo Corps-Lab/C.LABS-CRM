@@ -355,6 +355,7 @@ export default function Demandas() {
                   descricao: editingDemand.descricao,
                   dataPedido: editingDemand.dataPedido,
                   dataEntrega: editingDemand.dataEntrega,
+                  horaEntrega: editingDemand.horaEntrega,
                   responsavel: editingDemand.responsavel,
                   status: editingDemand.status,
                   prioridade: editingDemand.prioridade,

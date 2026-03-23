@@ -74,6 +74,11 @@ const isMockAuthEnabled = () => import.meta.env.VITE_USE_MOCK_AUTH === "true";
 
 const normalizeEmail = (value: string) => value.trim().toLowerCase();
 
+const normalizeRole = (value: unknown): AppRole => {
+  if (value === "ceo" || value === "admin" || value === "colaborador") return value;
+  return "colaborador";
+};
+
 const normalizeAgencyEmail = (value: string, agencyId: string) => {
   const email = normalizeEmail(value);
   if (agencyId !== "corps") return email;
@@ -324,32 +329,115 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const found = users.find(
           (u) => normalizeAgencyEmail(u.email, currentAgency.id) === normalizedInputEmail && u.password === password
         );
-        if (!found) throw new Error("Credenciais inválidas para esta agência");
-        if (found.active === false) throw new Error("Acesso inativo. Fale com o administrador.");
-        const localUser = { id: found.id || safeId("user"), email: found.email, user_metadata: { name: found.nome } } as unknown as User;
-        setUser(localUser);
-        setSession(null);
-        setProfile({
-          id: localUser.id,
-          user_id: localUser.id,
-          nome: found.nome,
-          telefone: found.telefone || null,
-          cpf: found.cpf || null,
-          cargo: found.cargo || null,
-          nivel_acesso: found.role,
-          avatar_url: null,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
+        if (found) {
+          if (found.active === false) throw new Error("Acesso inativo. Fale com o administrador.");
+          const localUser = { id: found.id || safeId("user"), email: found.email, user_metadata: { name: found.nome } } as unknown as User;
+          setUser(localUser);
+          setSession(null);
+          setProfile({
+            id: localUser.id,
+            user_id: localUser.id,
+            nome: found.nome,
+            telefone: found.telefone || null,
+            cpf: found.cpf || null,
+            cargo: found.cargo || null,
+            nivel_acesso: found.role,
+            avatar_url: null,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          });
+          setRole(found.role);
+          try {
+            localStorage.setItem(
+              localSessionKey,
+              JSON.stringify({ userId: localUser.id, email: found.email, nome: found.nome, role: found.role })
+            );
+          } catch {
+            /* ignore */
+          }
+          setLoading(false);
+          return { error: null };
+        }
+
+        // Fallback para mobile/novo dispositivo: tenta autenticar no Supabase e sincroniza localmente.
+        const { data: remoteAuth, error: remoteAuthError } = await supabase.auth.signInWithPassword({
+          email: normalizedInputEmail,
+          password,
         });
-        setRole(found.role);
+        if (remoteAuthError || !remoteAuth.user) {
+          throw new Error("Credenciais inválidas para esta agência");
+        }
+
+        const remoteUser = remoteAuth.user;
+        const remoteStatus = await getRemoteAccessStatus(remoteUser.id);
+        const localStatus = readAccessStatusOverrides()[remoteUser.id];
+        const isActive = remoteStatus ?? localStatus ?? true;
+        if (!isActive) {
+          await supabase.auth.signOut();
+          throw new Error("Acesso inativo. Peça ativação ao administrador.");
+        }
+
+        const [{ data: profileData }, { data: roleData }] = await Promise.all([
+          supabase.from("profiles").select("*").eq("user_id", remoteUser.id).maybeSingle(),
+          supabase.from("user_roles").select("role").eq("user_id", remoteUser.id).maybeSingle(),
+        ]);
+
+        const remoteRole = normalizeRole(roleData?.role || profileData?.nivel_acesso);
+        const remoteName =
+          profileData?.nome ||
+          (typeof remoteUser.user_metadata?.name === "string" ? remoteUser.user_metadata.name : "") ||
+          normalizedInputEmail.split("@")[0];
+
+        setUser(remoteUser);
+        setSession(remoteAuth.session ?? null);
+        setProfile({
+          id: String(profileData?.id || remoteUser.id),
+          user_id: remoteUser.id,
+          nome: remoteName,
+          telefone: profileData?.telefone || null,
+          cpf: profileData?.cpf || null,
+          cargo: profileData?.cargo || null,
+          nivel_acesso: remoteRole,
+          avatar_url: profileData?.avatar_url || null,
+          created_at: String(profileData?.created_at || new Date().toISOString()),
+          updated_at: String(profileData?.updated_at || new Date().toISOString()),
+        });
+        setRole(remoteRole);
+
         try {
+          const existing = loadLocalUsers();
+          const syncedUser: LocalUserRecord = {
+            id: remoteUser.id,
+            email: normalizedInputEmail,
+            password,
+            nome: remoteName,
+            role: remoteRole,
+            active: true,
+            telefone: profileData?.telefone || null,
+            cpf: profileData?.cpf || null,
+            cargo: profileData?.cargo || null,
+          };
+          const next = existing.some((u) => u.id === remoteUser.id || normalizeAgencyEmail(u.email, currentAgency.id) === normalizedInputEmail)
+            ? existing.map((u) =>
+                u.id === remoteUser.id || normalizeAgencyEmail(u.email, currentAgency.id) === normalizedInputEmail
+                  ? syncedUser
+                  : u
+              )
+            : [...existing, syncedUser];
+          persistLocalUsers(next);
           localStorage.setItem(
             localSessionKey,
-            JSON.stringify({ userId: localUser.id, email: found.email, nome: found.nome, role: found.role })
+            JSON.stringify({
+              userId: remoteUser.id,
+              email: normalizedInputEmail,
+              nome: remoteName,
+              role: remoteRole,
+            })
           );
         } catch {
           /* ignore */
         }
+
         setLoading(false);
         return { error: null };
       }
@@ -504,6 +592,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (isIsolated) {
       try {
         localStorage.removeItem(localSessionKey);
+      } catch {
+        /* ignore */
+      }
+      try {
+        await supabase.auth.signOut();
       } catch {
         /* ignore */
       }
