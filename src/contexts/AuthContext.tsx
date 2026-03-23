@@ -91,6 +91,24 @@ const normalizeAgencyEmail = (value: string, agencyId: string) => {
     .replace(/@agenciacorps\.ag$/i, "@corps.ag");
 };
 
+const buildAgencyEmailCandidates = (value: string, agencyId: string) => {
+  const normalized = normalizeEmail(value);
+  const variants = new Set<string>();
+  variants.add(normalizeAgencyEmail(normalized, agencyId));
+  variants.add(normalized);
+
+  if (agencyId === "corps" && normalized.includes("@")) {
+    const [localPart] = normalized.split("@");
+    if (localPart) {
+      ["corps.ag", "agenciacorps.ag", "sky.ag", "agenciaceu.ag"].forEach((domain) => {
+        variants.add(`${localPart}@${domain}`);
+      });
+    }
+  }
+
+  return Array.from(variants).filter((item) => item.includes("@"));
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const { currentAgency, isIsolated } = useAgency();
   const [user, setUser] = useState<User | null>(null);
@@ -360,11 +378,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
 
         // Fallback para mobile/novo dispositivo: tenta autenticar no Supabase e sincroniza localmente.
-        const { data: remoteAuth, error: remoteAuthError } = await supabase.auth.signInWithPassword({
-          email: normalizedInputEmail,
-          password,
-        });
-        if (remoteAuthError || !remoteAuth.user) {
+        const candidateEmails = buildAgencyEmailCandidates(email, currentAgency.id);
+        let remoteAuth: Awaited<ReturnType<typeof supabase.auth.signInWithPassword>>["data"] | null = null;
+        let remoteAuthError: Error | null = null;
+        let remoteEmailUsed = normalizedInputEmail;
+
+        for (const candidateEmail of candidateEmails) {
+          const attempt = await supabase.auth.signInWithPassword({
+            email: candidateEmail,
+            password,
+          });
+
+          if (attempt.data?.user) {
+            remoteAuth = attempt.data;
+            remoteEmailUsed = candidateEmail;
+            remoteAuthError = null;
+            break;
+          }
+
+          remoteAuthError = (attempt.error as Error) || null;
+        }
+
+        if (!remoteAuth?.user) {
+          if (remoteAuthError?.message?.toLowerCase().includes("invalid login credentials")) {
+            throw new Error("Credenciais inválidas para esta agência");
+          }
           throw new Error("Credenciais inválidas para esta agência");
         }
 
@@ -386,7 +424,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const remoteName =
           profileData?.nome ||
           (typeof remoteUser.user_metadata?.name === "string" ? remoteUser.user_metadata.name : "") ||
-          normalizedInputEmail.split("@")[0];
+          remoteEmailUsed.split("@")[0];
 
         setUser(remoteUser);
         setSession(remoteAuth.session ?? null);
@@ -408,7 +446,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const existing = loadLocalUsers();
           const syncedUser: LocalUserRecord = {
             id: remoteUser.id,
-            email: normalizedInputEmail,
+            email: remoteEmailUsed,
             password,
             nome: remoteName,
             role: remoteRole,
@@ -429,7 +467,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localSessionKey,
             JSON.stringify({
               userId: remoteUser.id,
-              email: normalizedInputEmail,
+              email: remoteEmailUsed,
               nome: remoteName,
               role: remoteRole,
             })
