@@ -79,6 +79,12 @@ const normalizeRole = (value: unknown): AppRole => {
   return "colaborador";
 };
 
+const isInvalidCredentialsError = (error: unknown) => {
+  if (!error || typeof error !== "object") return false;
+  const message = "message" in error ? String(error.message || "").toLowerCase() : "";
+  return message.includes("invalid login credentials") || message.includes("credenciais inválidas");
+};
+
 const normalizeAgencyEmail = (value: string, agencyId: string) => {
   const email = normalizeEmail(value);
   if (agencyId !== "corps") return email;
@@ -171,6 +177,71 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return data.is_active;
     } catch {
       return null;
+    }
+  };
+
+  const ensureRemoteIsolatedUser = async (userData: {
+    email: string;
+    password: string;
+    nome: string;
+    role: AppRole;
+    telefone?: string | null;
+    cpf?: string | null;
+    cargo?: string | null;
+  }) => {
+    const normalizedEmail = normalizeEmail(userData.email);
+
+    try {
+      const signInAttempt = await supabase.auth.signInWithPassword({
+        email: normalizedEmail,
+        password: userData.password,
+      });
+
+      let remoteUserId = signInAttempt.data.user?.id || null;
+
+      if (!remoteUserId && isInvalidCredentialsError(signInAttempt.error)) {
+        const signUpAttempt = await supabase.auth.signUp({
+          email: normalizedEmail,
+          password: userData.password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+          },
+        });
+
+        remoteUserId = signUpAttempt.data.user?.id || null;
+      }
+
+      if (!remoteUserId) return;
+
+      const profilePayload = {
+        user_id: remoteUserId,
+        nome: userData.nome,
+        telefone: userData.telefone || null,
+        cpf: userData.cpf || null,
+        cargo: userData.cargo || null,
+        nivel_acesso: userData.role,
+      };
+
+      const { error: profileInsertError } = await supabase.from("profiles").insert(profilePayload);
+      if (profileInsertError && !String(profileInsertError.message || "").toLowerCase().includes("duplicate")) {
+        console.warn("Falha ao sincronizar profile remoto:", profileInsertError);
+      }
+
+      const { error: roleInsertError } = await supabase.from("user_roles").insert({
+        user_id: remoteUserId,
+        role: userData.role,
+      });
+      if (roleInsertError && !String(roleInsertError.message || "").toLowerCase().includes("duplicate")) {
+        console.warn("Falha ao sincronizar role remota:", roleInsertError);
+      }
+    } catch (error) {
+      console.warn("Falha na sincronização remota do usuário isolado:", error);
+    } finally {
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        /* ignore */
+      }
     }
   };
 
@@ -374,6 +445,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             /* ignore */
           }
           setLoading(false);
+          void ensureRemoteIsolatedUser({
+            email: found.email,
+            password,
+            nome: found.nome,
+            role: found.role,
+            telefone: found.telefone || null,
+            cpf: found.cpf || null,
+            cargo: found.cargo || null,
+          });
           return { error: null };
         }
 
@@ -542,6 +622,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           active: true,
         };
         persistLocalUsers([...users, localUser]);
+        void ensureRemoteIsolatedUser({
+          email: localUser.email,
+          password: localUser.password,
+          nome: localUser.nome,
+          role: localUser.role,
+          telefone: localUser.telefone || null,
+          cpf: localUser.cpf || null,
+          cargo: localUser.cargo || null,
+        });
         // Auto-login apenas se não houver usuário ativo (ex: criação pela tela de login)
         if (!user) {
           setUser({ id: localUser.id, email: localUser.email } as unknown as User);
